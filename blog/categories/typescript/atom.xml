@@ -1,0 +1,1328 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: typescript | Artsy Engineering]]></title>
+  <link href="http://artsy.github.io/blog/categories/typescript/atom.xml" rel="self"/>
+  <link href="http://artsy.github.io/"/>
+  <updated>2018-12-16T10:16:31+00:00</updated>
+  <id>http://artsy.github.io/</id>
+  <author>
+    <name><![CDATA[]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Conditional types in TypeScript]]></title>
+    <link href="http://artsy.github.io/blog/2018/11/21/conditional-types-in-typescript/"/>
+    <updated>2018-11-21T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/11/21/conditional-types-in-typescript</id>
+    <content type="html"><![CDATA[<p>This year TypeScript gained a new feature that punches far above its weight.</p>
+
+<blockquote><p>Working through our (enormous) backlog of unsorted TypeScript "Suggestions" and it's remarkable how many of them
+are solved by conditional types.</p></blockquote>
+
+<p>-- <a href="https://twitter.com/SeaRyanC/status/1029846761718702081">Ryan Cavanaugh</a>, TypeScript maintainer</p>
+
+<p>Conditional types probably aren't something you'll write every day, but you might end up using them indirectly all
+the time. That's because they're great for 'plumbing' or 'framework' code, for dealing with API boundaries and
+other behind-the-scenes kinda stuff. So, dear reader, read on! It's always good to learn how the sausage is made.
+Then you can make sausage of your own.</p>
+
+<p>Typewurst! 🌭</p>
+
+<!-- more -->
+
+
+<p><em>Note: This is a straightforward adaptation of a 35-minute presentation given at
+<a href="https://www.meetup.com/Futurice-London-Beer-Tech/events/255295412/">Futurice London's TypeScript Night meetup</a>,
+and therefore provides more context than an ordinary blog post might. I hope a lot of that context is interesting
+and useful even for seasoned TypeScript developers. If you'd prefer a no-frills experience, check out the
+<a href="https://www.typescriptlang.org/docs/handbook/release-notes/typescript-2-8.html">TypeScript 2.8 Release notes</a> .</em></p>
+
+<a name="Your.first.conditional.type"></a>
+<h2>Your first conditional type</h2>
+
+<p>Here's some plain JavaScript</p>
+
+<pre><code class="ts">function process(text) {
+  return text &amp;&amp; text.replace(/f/g, "p")
+}
+
+process("foo").toUpperCase()
+</code></pre>
+
+<p>Reading the code, it's clear to a human that the <code>.toUpperCase()</code> method call is safe. We can tell that whenever a
+string is passed in to <code>process</code>, a string will be returned.</p>
+
+<p>But notice that we could also pass something like <code>null</code> into the function, in which case <code>null</code> would be returned.
+Then calling <code>.toUpperCase()</code> on the result would be an error.</p>
+
+<p>Let's add basic types to this function so we can let TypeScript worry about whether we are using it safely or not.</p>
+
+<pre><code class="ts">function process(text: string | null): string | null {
+  return text &amp;&amp; text.replace(/f/g, "p")
+}
+</code></pre>
+
+<p>Seems sensible. What happens if we try to use it like before?</p>
+
+<pre><code class="ts">//            ⌄ Type Error! :(
+process("foo").toUpperCase()
+</code></pre>
+
+<p>TypeScript complains because it thinks that the result of <code>process("foo")</code> might be <code>null</code>, even though we clever
+humans know that it won't be. It can't figure out the runtime semantics of the function on its own.</p>
+
+<p>One way of helping TS understand the function better is to use 'overloading'. Overloading involves providing
+multiple type signatures for a single function, and letting TypeScript figure out which one to use in any given
+context.</p>
+
+<pre><code class="ts">function process(text: null): null;
+function process(text: string): string;
+function process(text: any) {
+  ...
+}
+</code></pre>
+
+<p>Here we've said that if we pass a <code>string</code>, it returns a <code>string</code>, and if we pass <code>null</code>, it returns <code>null</code>. <em>(The
+<code>any</code> type is ignored but still needs to be there for some reason</em> 🤷‍️<em>)</em></p>
+
+<p>That works nicely:</p>
+
+<pre><code class="ts">// All clear!
+process("foo").toUpperCase()
+//           ⌄ Type Error! :)
+process(null).toUpperCase()
+</code></pre>
+
+<p>But there's another use case that doesn't work:</p>
+
+<pre><code class="ts">declare const maybeFoo: string | null
+
+//      ⌄ Type Error! :(
+process(maybeFoo)
+</code></pre>
+
+<p>TypeScript won't let us pass something that is of type <code>string | null</code> because it's not smart enough to collapse
+the overloaded signatures when that's possible. So we can either add yet another overload signature for the
+<code>string | null</code> case, or we can be like <span style="white-space: nowrap; font-family: sans-serif;">(╯°□°)╯︵
+┻━┻</span> and switch to using <strong>conditional types</strong>.</p>
+
+<pre><code class="ts">function process&lt;T extends string | null&gt;(
+  text: T
+): T extends string ? string : null {
+  ...
+}
+</code></pre>
+
+<p>Here we've introduced a type variable <code>T</code> for the <code>text</code> parameter. We can then use <code>T</code> as part of a conditional
+return type: <code>T extends string ? string : null</code>. You probably noticed that this looks just like a ternary
+expression! Indeed, it's doing the same kind of thing, but within the type system at compile time.</p>
+
+<p>And that takes care of all our use cases:</p>
+
+<pre><code class="ts">typeof process("foo") // =&gt; string
+typeof process(null) // =&gt; null
+typeof process(maybeFoo) // =&gt; string | null
+</code></pre>
+
+<p>So that's what a conditional type is! A kind of ternary type expression. It always has this form:</p>
+
+<pre><code>A extends B ? C : D
+</code></pre>
+
+<p><code>A</code>, <code>B</code>, <code>C</code>, and <code>D</code> can be any old type expressions, but all the important stuff is happening on the left there.
+In the <code>A extends B</code> condition.</p>
+
+<a name="Assignability"></a>
+<h2>Assignability</h2>
+
+<p>This <code>extends</code> keyword is the heart of a conditional type. <code>A extends B</code> means precisely that any value of type <code>A</code>
+can safely be assigned to a variable of type <code>B</code>. In type system jargon we can say that "A is <em>assignable</em> to B".</p>
+
+<pre><code class="ts">declare const a: A
+const b: B = a
+// type check succeeds only if A is assignable to B
+</code></pre>
+
+<p>TypeScript decides which types are assignable to each other using an approach called 'structural typing'. This kind
+of type system started appearing in mainstream languages relatively recently (in the last 10 years or so), and
+might be a little counterintuitive if you come from a Java or C# background.</p>
+
+<p>You may have heard of 'duck typing' in relation to dynamically-typed languages. The phrase 'duck typing' comes from
+the proverb</p>
+
+<blockquote><p>If it looks like a duck, swims like a duck, and quacks like a duck, then it probably is a duck.</p></blockquote>
+
+<p>In duck typing, you judge a thing by how it behaves, rather than what it is called or who its parents are. It's a
+kind of meritocracy. Structural typing is a way of applying that same idea to a static compile-time type system.</p>
+
+<p>So TypeScript only cares about what types can do, not what they are called or where they exist in a type hierarchy.</p>
+
+<p>Take this simple example:</p>
+
+<pre><code class="ts">class A {}
+class B {}
+
+const b: B = new A() // ✔ all good
+const a: A = new B() // ✔ all good
+
+new A() instanceof B // =&gt; false
+</code></pre>
+
+<p>TypeScript is happy treating two completely unrelated classes as equivalent because they have the same <em>structure</em>
+and the same <em>capabilities</em>. Meanwhile, when checking the types at runtime, we discover that they are actually not
+equivalent.</p>
+
+<p>This is a notable example of where the semantics of TypeScript are at odds with JavaScript. It might seem like a
+problem, but in practice structural typing is a lot more flexible than Java-esque 'nominal' typing, where names and
+hierarchy matter. The two aren't mutually exclusive, however. Some languages, like Scala and Flow, allow you to mix
+and match to suit particular problems.</p>
+
+<p>Aside from that, the way that assignability works with structural typing is very intuitive.</p>
+
+<pre><code class="ts">interface Shape {
+  color: string
+}
+
+class Circle {
+  color: string
+  radius: number
+}
+
+// ✔ All good! Circles have a color
+const shape: Shape = new Circle()
+// ✘ Type error! Not all shapes have a radius!
+const circle: Circle = shape
+</code></pre>
+
+<p>Speaking structurally we can say that <code>A extends B</code> is a lot like '<code>A</code> is a superset of <code>B</code>', or, to be more
+verbose, '<code>A</code> has all of <code>B</code>'s properties, <em>and maybe some more</em>'.</p>
+
+<p>There's one minor caveat though, and that's with 'literal' types. In TypeScript you can use literal values of
+primitive types as types themselves.</p>
+
+<pre><code class="ts">let fruit: "banana" = "banana"
+
+// Type Error! "apple" is not assignable to "banana"
+fruit = "apple"
+</code></pre>
+
+<p>The string <code>"banana"</code> doesn't have more properties than any other <code>string</code>. But the type <code>"banana"</code> is
+still more <em>specific</em> than the type <code>string</code>.</p>
+
+<p>So another way to think of <code>A extends B</code> is like '<code>A</code> is a possibly-more-specific version of <code>B</code>'.</p>
+
+<p>Which brings us to 'top' and 'bottom' types: the <em>least</em> and <em>most</em> specific types, respectively.</p>
+
+<p>In type theory a 'top' type is one which all other types are assignable to. It is the type you use to say "I have
+absolutely no information about what this value is". Think of it as the union of all possible types:</p>
+
+<pre><code class="ts">type Top = string | number | {foo: Bar} | Baz[] | ... | ∞
+</code></pre>
+
+<p>TypeScript has two top types: <code>any</code> and <code>unknown</code>.</p>
+
+<ul>
+<li>Using <code>any</code> is like saying "I have no idea what this value looks like. So, TypeScript, please assume I'm using it
+correctly, and don't complain if anything I do seems dangerous".</li>
+<li>Using <code>unknown</code> is like saying "I have no idea what this value looks like. So, TypeScript, please make sure I
+check what it is capable of at run time."</li>
+</ul>
+
+
+<p>A 'bottom' type is one which no other types are assignable to, and that no values can be an instance of. Think of
+it as the empty union type:</p>
+
+<pre><code class="ts">type Bottom = ∅
+</code></pre>
+
+<p>TypeScript has one bottom type: <code>never</code>. That's a nice descriptive name because it literally means <em>this can never
+happen</em>.</p>
+
+<p>Top and bottom types are useful to know about when working with conditional types. <code>never</code> is especially useful
+when using conditional types to refine unions...</p>
+
+<a name="Refining.unions.with.distributive.conditional.types"></a>
+<h2>Refining unions with distributive conditional types</h2>
+
+<p>Conditional types let you filter out particular members of a union type. To illustrate, let's say we have a union
+type called <code>Animal</code>:</p>
+
+<pre><code class="ts">type Animal = Lion | Zebra | Tiger | Shark
+</code></pre>
+
+<p>And imagine that we needed to write a function that used only those animals which are also cats. We might write
+some helper type called <code>ExtractCat</code> to do that:</p>
+
+<pre><code class="ts">type ExtractCat&lt;A&gt; = A extends { meow(): void } ? A : never
+
+type Cat = ExtractCat&lt;Animal&gt;
+// =&gt; Lion | Tiger
+</code></pre>
+
+<p><em>I know lions and tigers don't meow, but how cute would it be if they did</em> ^_^</p>
+
+<p>This seemed vague and magical to me at first. Let's see what TypeScript is doing under the hood when it evaluates
+<code>ExtractCat&lt;Animal&gt;</code>.</p>
+
+<p>First, it applies <code>ExtractCat</code> recursively to all the members of <code>Animal</code>:</p>
+
+<!-- prettier-ignore -->
+
+
+<pre><code class="ts">type Cat =
+  | ExtractCat&lt;Lion&gt;
+  | ExtractCat&lt;Zebra&gt;
+  | ExtractCat&lt;Tiger&gt;
+  | ExtractCat&lt;Shark&gt;
+</code></pre>
+
+<p>Then it evaluates the conditional types:</p>
+
+<pre><code class="ts">type Cat = Lion | never | Tiger | never
+</code></pre>
+
+<p>And then something fun happens... Remember that no values can ever be of type <code>never</code>? That makes it totally
+meaningless to include <code>never</code> in a union type, so TypeScript just gets rid of it.</p>
+
+<pre><code class="ts">type Cat = Lion | Tiger
+</code></pre>
+
+<p>The TypeScript jargon for this kind of conditional type is <strong>distributive conditional type</strong>.</p>
+
+<p>That 'distribution', where the union is unrolled recursively, only happens when the thing on the left of the
+<code>extends</code> keyword is a plain type variable. We'll see what that means and how to work around it in the next
+section.</p>
+
+<a name="A.real.use-case.for.distributive.conditional.types."></a>
+<h2>A real use-case for distributive conditional types.</h2>
+
+<p>A while ago I was building a Chrome extension. It had a 'background' script and a 'view' script that ran in
+different execution contexts. They needed to communicate and share state, and the only way to do that is via
+serializable message passing. I took inspiration from Redux and defined a global union of interfaces called
+<code>Action</code> to model the messages that I wanted to be able to pass between the contexts.</p>
+
+<pre><code class="ts">type Action =
+  | {
+      type: "INIT"
+    }
+  | {
+      type: "SYNC"
+    }
+  | {
+      type: "LOG_IN"
+      emailAddress: string
+    }
+  | {
+      type: "LOG_IN_SUCCESS"
+      accessToken: string
+    }
+// ...
+</code></pre>
+
+<p>And then there was a global <code>dispatch</code> function that I could use directly to broadcast messages across contexts</p>
+
+<pre><code class="ts">declare function dispatch(action: Action): void
+
+// ...
+
+dispatch({
+  type: "INIT"
+})
+
+// ...
+
+dispatch({
+  type: "LOG_IN",
+  emailAddress: "david.sheldrick@artsy.net"
+})
+
+// ...
+
+dispatch({
+  type: "LOG_IN_SUCCESS",
+  accessToken: "038fh239h923908h"
+})
+</code></pre>
+
+<p><a
+  target="_blank"
+  style="font-size: 0.8em"
+  href="https://www.typescriptlang.org/play/#src=type%20Action%20%3D%0D%0A%20%20%7C%20%7B%0D%0A%20%20%20%20%20%20type%3A%20%22INIT%22%0D%0A%20%20%20%20%7D%0D%0A%20%20%7C%20%7B%0D%0A%20%20%20%20%20%20type%3A%20%22SYNC%22%0D%0A%20%20%20%20%7D%0D%0A%20%20%7C%20%7B%0D%0A%20%20%20%20%20%20type%3A%20%22LOG_IN%22%0D%0A%20%20%20%20%20%20emailAddress%3A%20string%0D%0A%20%20%20%20%7D%0D%0A%20%20%7C%20%7B%0D%0A%20%20%20%20%20%20type%3A%20%22LOG_IN_SUCCESS%22%0D%0A%20%20%20%20%20%20accessToken%3A%20string%0D%0A%20%20%20%20%7D%0D%0A%0D%0Adeclare%20function%20dispatch(action%3A%20Action)%3A%20void%0D%0A%0D%0Adispatch(%7B%0D%0A%20%20type%3A%20%22INIT%22%0D%0A%7D)%0D%0A%0D%0Adispatch(%7B%0D%0A%20%20type%3A%20%22LOG_IN%22%2C%0D%0A%20%20emailAddress%3A%20%22david.sheldrick%40artsy.net%22%0D%0A%7D)%0D%0A%0D%0Adispatch(%7B%0D%0A%20%20type%3A%20%22LOG_IN_SUCCESS%22%2C%0D%0A%20%20accessToken%3A%20%22038fh239h923908h%22%0D%0A%7D)">
+<em>Try it in the TypeScript playground</em> </a></p>
+
+<p>This API is typesafe and it plays well with my IDE's autocomplete and I could have left it there. I could have
+moved on to other things.</p>
+
+<p>But there's this little voice inside my head. I think most developers have this voice.</p>
+
+<pre style="background: transparent; color: #333; border: 0; box-shadow: none; padding: 0;">
+INT. HIPSTER CO-WORKING SPACE - DAY
+
+DAVID sits on an oddly-shaped orange chair.
+His MacBook rests askew on a lumpy reclaimed
+wood desk. He stares at colorful text on a
+dark screen.
+
+A tiny whisper.
+
+              VOICE (V.O.)
+    Psst!
+
+David looks around for a moment and then
+stares back at the laptop.
+
+              VOICE (V.O.)
+    Psst! Hey!
+
+Startled this time, David looks around
+again. He speaks to nobody in particular.
+
+              DAVID
+    Is someone there?
+
+              VOICE (V.O.)
+    It's me, the DRY devil.
+
+David heaves a painful sigh of recognition.
+
+              DAVID
+    Not you again! Leave me alone!
+
+              DRY DEVIL (V.O.)
+    DRY stands for "Don't Repeat Yourself"
+
+              DAVID
+    I know, you say that every time! Now
+    get lost!
+
+              DRY DEVIL (V.O.)
+    I've noticed an issue with your code.
+
+              DAVID
+    Seriously, go away! I'm busy solving
+    user problems to create business value.
+
+              DRY DEVIL (V.O.)
+    Every time you call `dispatch` you
+    are typing 6 redundant characters.
+
+              DAVID
+    Oh snap! You're right! I must fix this.
+
+MONTAGE
+
+David spends the next 2 hours wrestling
+with TypeScript, accumulating a pile of
+empty coffee cups and protein ball wrappers.
+</pre>
+
+
+<p>We've all been there.</p>
+
+<p>I wanted the dispatch function to work like this:</p>
+
+<pre><code class="ts">// first argument is the 'type'
+// second is any extra parameters
+dispatch("LOG_IN_SUCCESS", {
+  accessToken: "038fh239h923908h"
+})
+</code></pre>
+
+<p>Deriving the type for that first argument is easy enough.</p>
+
+<pre><code class="ts">type ActionType = Action["type"]
+// =&gt; "INIT" | "SYNC" | "LOG_IN" | "LOG_IN_SUCCESS"
+</code></pre>
+
+<p>But the type of the second argument <em>depends on</em> the first argument. We can use a type variable to model that
+dependency.</p>
+
+<!-- prettier-ignore -->
+
+
+<pre><code class="ts">declare function dispatch&lt;T extends ActionType&gt;(
+  type: T,
+  args: ExtractActionParameters&lt;Action, T&gt;
+): void
+</code></pre>
+
+<p><em>Woah woah woah, what's this</em> <code>ExtractActionParameters</code> <em>voodoo?</em></p>
+
+<p>It's a conditional type of course! Here's a first attempt at implementing it:</p>
+
+<pre><code class="ts">type ExtractActionParameters&lt;A, T&gt; = A extends { type: T } ? A : never
+</code></pre>
+
+<p>This is a lot like the <code>ExtractCat</code> example from before, where we were were refining the <code>Animals</code> union by
+searching for something that can <code>meow()</code>. Here, we're refining the <code>Action</code> union type by searching for an
+interface with a particular <code>type</code> property. Let's see if it works:</p>
+
+<pre><code class="ts">type Test = ExtractActionParameters&lt;Action, "LOG_IN"&gt;
+// =&gt; { type: "LOG_IN", emailAddress: string }
+</code></pre>
+
+<p>Almost there! We don't want to keep the <code>type</code> field after extraction because then we would still have to specify
+it when calling <code>dispatch</code>. And that would somewhat defeat the purpose of this entire exercise.</p>
+
+<p>We can omit the <code>type</code> field by combining a <strong>mapped type</strong> with a conditional type and the <code>keyof</code> operator.</p>
+
+<p>A <strong>mapped type</strong> lets you create a new interface by 'mapping' over a union of keys. You can get a union of keys
+from an existing interface by using the <code>keyof</code> operator. And finally, you can remove things from a union using a
+conditional type. Here's how they play together (with some inline test cases for illustration):</p>
+
+<pre><code class="ts">type ExcludeTypeKey&lt;K&gt; = K extends "type" ? never : K
+
+type Test = ExcludeTypeKey&lt;"emailAddress" | "type" | "foo"&gt;
+// =&gt; "emailAddress" | "foo"
+
+// here's the mapped type
+type ExcludeTypeField&lt;A&gt; = { [K in ExcludeTypeKey&lt;keyof A&gt;]: A[K] }
+
+type Test = ExcludeTypeField&lt;{ type: "LOG_IN"; emailAddress: string }&gt;
+// =&gt; { emailAddress: string }
+</code></pre>
+
+<p>Then we can use <code>ExcludeTypeField</code> to redefine <code>ExtractActionParameters</code>.</p>
+
+<!-- prettier-ignore -->
+
+
+<pre><code class="ts">type ExtractActionParameters&lt;A, T&gt; = A extends { type: T }
+  ? ExcludeTypeField&lt;A&gt;
+  : never
+</code></pre>
+
+<p>And now the new version of <code>dipsatch</code> is typesafe!</p>
+
+<pre><code class="ts">// All clear! :)
+dispatch("LOG_IN_SUCCESS", {
+  accessToken: "038fh239h923908h"
+})
+
+dispatch("LOG_IN_SUCCESS", {
+  // Type Error! :)
+  badKey: "038fh239h923908h"
+})
+
+// Type Error! :)
+dispatch("BAD_TYPE", {
+  accessToken: "038fh239h923908h"
+})
+</code></pre>
+
+<p><a
+  target="_blank"
+  style="font-size: 0.8em"
+  href="https://www.typescriptlang.org/play/#src=type%20Action%20%3D%0D%0A%20%20%7C%20%7B%0D%0A%20%20%20%20%20%20type%3A%20%22INIT%22%0D%0A%20%20%20%20%7D%0D%0A%20%20%7C%20%7B%0D%0A%20%20%20%20%20%20type%3A%20%22SYNC%22%0D%0A%20%20%20%20%7D%0D%0A%20%20%7C%20%7B%0D%0A%20%20%20%20%20%20type%3A%20%22LOG_IN%22%0D%0A%20%20%20%20%20%20emailAddress%3A%20string%0D%0A%20%20%20%20%7D%0D%0A%20%20%7C%20%7B%0D%0A%20%20%20%20%20%20type%3A%20%22LOG_IN_SUCCESS%22%0D%0A%20%20%20%20%20%20accessToken%3A%20string%0D%0A%20%20%20%20%7D%0D%0A%0D%0Atype%20ActionType%20%3D%20Action%5B%22type%22%5D%0D%0A%0D%0Adeclare%20function%20dispatch%3CT%20extends%20ActionType%3E(%0D%0A%20%20%20%20type%3A%20T%2C%0D%0A%20%20%20%20args%3A%20ExtractActionParameters%3CAction%2C%20T%3E%0D%0A)%3A%20void%0D%0A%0D%0Atype%20ExcludeTypeKey%3CK%3E%20%3D%20K%20extends%20%22type%22%20%3F%20never%20%3A%20K%0D%0A%0D%0Atype%20ExcludeTypeField%3CA%3E%20%3D%20%7B%20%5BK%20in%20ExcludeTypeKey%3Ckeyof%20A%3E%5D%3A%20A%5BK%5D%20%7D%0D%0A%0D%0Atype%20ExtractActionParameters%3CA%2C%20T%3E%20%3D%20A%20extends%20%7B%20type%3A%20T%20%7D%0D%0A%20%20%20%20%3F%20ExcludeTypeField%3CA%3E%0D%0A%20%20%20%20%3A%20never%0D%0A%20%20%0D%0A%2F%2F%20All%20clear!%20%3A)%0D%0Adispatch(%22LOG_IN_SUCCESS%22%2C%20%7B%0D%0A%20%20%20%20accessToken%3A%20%22038fh239h923908h%22%0D%0A%7D)%0D%0A%0D%0Adispatch(%22LOG_IN_SUCCESS%22%2C%20%7B%0D%0A%20%20%20%20%2F%2F%20Type%20Error!%20%3A)%0D%0A%20%20%20%20badKey%3A%20%22038fh239h923908h%22%0D%0A%7D)%0D%0A%0D%0A%2F%2F%20Type%20Error!%20%3A)%0D%0Adispatch(%22BAD_TYPE%22%2C%20%7B%0D%0A%20%20%20%20accessToken%3A%20%22038fh239h923908h%22%0D%0A%7D)">
+<em>Try it in the TypeScript playground</em> </a></p>
+
+<p>But there's one more very serious problem to address: If the action has no extra parameters, I still have to pass a
+second empty argument.</p>
+
+<pre><code class="ts">dispatch("INIT", {})
+</code></pre>
+
+<p>That's four whole wasted characters! Cancel my meetings and tell my partner not to wait up tonight! We need to
+<em>fix. this</em>.</p>
+
+<p>The naïve thing to do would be to make the second argument optional. That would be unsafe because, e.g. it would
+allow us to dispatch a <code>"LOG_IN"</code> action without specifying an <code>emailAddress</code>.</p>
+
+<p>Instead, let's overload the <code>dispatch</code> function.</p>
+
+<!-- prettier-ignore -->
+
+
+<pre><code class="ts">// And let's say that any actions that don't require
+// extra parameters are 'simple' actions.
+declare function dispatch(type: SimpleActionType): void
+// this signature is just like before
+declare function dispatch&lt;T extends ActionType&gt;(
+  type: T,
+  args: ExtractActionParameters&lt;Action, T&gt;
+): void
+
+type SimpleActionType = ExtractSimpleAction&lt;Action&gt;['type']
+</code></pre>
+
+<p>How can we define this <code>ExtractSimpleAction</code> conditional type? We know that if we remove the <code>type</code> field from an
+action and the result is an empty interface, then that is a simple action. So something like this might work</p>
+
+<pre><code class="ts">type ExtractSimpleAction&lt;A&gt; = ExcludeTypeField&lt;A&gt; extends {} ? A : never
+</code></pre>
+
+<p>Except that doesn't work. <code>ExcludeTypeField&lt;A&gt; extends {}</code> is always going to be true, because <code>{}</code> is like a top
+type for interfaces. <em>Pretty much everything</em> is more specific than <code>{}</code>.</p>
+
+<p>We need to swap the arguments around:</p>
+
+<pre><code class="ts">type ExtractSimpleAction&lt;A&gt; = {} extends ExcludeTypeField&lt;A&gt; ? A : never
+</code></pre>
+
+<p>Now if <code>ExcludeTypeField&lt;A&gt;</code> is empty, the condition will be true, otherwise it will be false.</p>
+
+<p>But this still doesn't work! On-the-ball readers might remember this:</p>
+
+<blockquote><p>That 'distribution', where the union is unrolled recursively, only happens when the thing on the left of the
+<code>extends</code> keyword is a plain type variable. We'll see what that means and how to work around it in the next
+section.</p></blockquote>
+
+<p>-- Me, in the previous section</p>
+
+<p>Type variables are always defined in a generic parameter list, delimited by <code>&lt;</code> and <code>&gt;</code>. e.g.</p>
+
+<pre><code class="ts">type Blah&lt;These, Are, Type, Variables&gt; = ...
+
+function blah&lt;And, So, Are, These&gt;() {
+  ...
+}
+</code></pre>
+
+<p>And if you want a conditional type to distribute over a union, the union a) needs to have been bound to a type
+variable, and b) that variable needs to appear alone to the left of the <code>extends</code> keyword.</p>
+
+<p>e.g. this is a distributive conditional type:</p>
+
+<pre><code class="ts">type Blah&lt;Var&gt; = Var extends Whatever ? A : B
+</code></pre>
+
+<p>and these are not:</p>
+
+<pre><code class="ts">type Blah&lt;Var&gt; = Foo&lt;Var&gt; extends Whatever ? A : B
+type Blah&lt;Var&gt; = Whatever extends Var ? A : B
+</code></pre>
+
+<p>When I discovered this limitation I thought that it exposed a fundamental shortcoming in the way distributive
+conditional types work under the hood. I thought it might be some kind of concession to algorithmic complexity. I
+thought that my use case was too advanced, and that TypeScript had just thrown its hands up in the air and said,
+"Sorry mate, you're on your own".</p>
+
+<p>But it turns out I was wrong. It is just a pragmatic language design decision to avoid extra syntax, and you can
+work around it easily:</p>
+
+<!-- prettier-ignore -->
+
+
+<pre><code class="ts">type ExtractSimpleAction&lt;A&gt; = A extends any
+  ? {} extends ExcludeTypeField&lt;A&gt;
+    ? A
+    : never
+  : never
+</code></pre>
+
+<p>All we did is wrap the meat of our logic in a flimsy tortilla of inevitability, since the outer condition
+<code>A extends any</code> will, of course, always be true.</p>
+
+<p>And finally we can delete those four characters 🎉🕺🏼💃🏽🎈</p>
+
+<pre><code class="ts">dispatch("INIT")
+</code></pre>
+
+<p>That's one yak successfully shaved ✔</p>
+
+<hr />
+
+<p>TypeScript provides a couple of built-in types that we could have used in this section:</p>
+
+<pre><code class="ts">// Exclude from U those types that are assignable to T
+type Exclude&lt;U, T&gt; = U extends T ? never : U
+
+// Extract from U those types that are assignable to T
+type Extract&lt;U, T&gt; = U extends T ? U : never
+</code></pre>
+
+<p>e.g. instead of defining <code>ExcludeTypeField</code> like this:</p>
+
+<pre><code class="ts">type ExcludeTypeField&lt;A&gt; = { [K in ExcludeTypeKey&lt;keyof A&gt;]: A[K] }
+</code></pre>
+
+<p>we could have done this:</p>
+
+<pre><code class="ts">type ExcludeTypeField&lt;A&gt; = { [K in Exclude&lt;keyof A, "type"&gt;]: A[K] }
+</code></pre>
+
+<p>And instead of defining <code>ExtractActionParameters</code> like this:</p>
+
+<!-- prettier-ignore -->
+
+
+<pre><code class="ts">type ExtractActionParameters&lt;A, T&gt; = A extends { type: T }
+  ? ExcludeTypeField&lt;A&gt;
+  : never
+</code></pre>
+
+<p>we could have done this:</p>
+
+<pre><code class="ts">type ExtractActionParameters&lt;A, T&gt; = ExcludeTypeField&lt;Extract&lt;A, { type: T }&gt;&gt;
+</code></pre>
+
+<a name="L.....Exercise.for.the.intrepid.reader"></a>
+<h2>💡 Exercise for the intrepid reader</h2>
+
+<p>Notice that this still works.</p>
+
+<pre><code class="ts">dispatch("INIT", {})
+</code></pre>
+
+<p>Use what you've learned so far to make it an error to supply a second argument for 'simple' actions.</p>
+
+<a name="Destructuring.types.with..code.infer..code."></a>
+<h2>Destructuring types with <code>infer</code></h2>
+
+<p>Conditional types have another trick up their sleeve: the <code>infer</code> keyword. It can be used anywhere in the type
+expression to the right of the <code>extends</code> keyword. It gives a name to whichever type would appear in that place.
+e.g.</p>
+
+<pre><code class="ts">type Unpack&lt;A&gt; = A extends Array&lt;infer E&gt; ? E : A
+
+type Test = Unpack&lt;Apple[]&gt;
+// =&gt; Apple
+type Test = Unpack&lt;Apple&gt;
+// =&gt; Apple
+</code></pre>
+
+<p>It handles ambiguity gracefully:</p>
+
+<pre><code class="ts">type Stairs = Unpack&lt;Apple[] | Pear[]&gt;
+// =&gt; Apple | Pear
+</code></pre>
+
+<p>You can even use <code>infer</code> multiple times.</p>
+
+<pre><code class="ts">type Flip&lt;T&gt; = T extends [infer A, infer B] ? [B, A] : never
+type Stairs = Flip&lt;[Pear, Apple]&gt;
+// =&gt; [Apple, Pear]
+
+type Union&lt;T&gt; = T extends [infer A, infer A] ? A : never
+type Stairs = Union&lt;[Apple, Pear]&gt;
+// =&gt; Apple | Pear
+</code></pre>
+
+<a name="Other.built-in.conditional.types"></a>
+<h2>Other built-in conditional types</h2>
+
+<p>We've already seen <code>Exclude</code> and <code>Extract</code>, and TypeScript provides a few other conditional types out of the box.</p>
+
+<!-- prettier-ignore -->
+
+
+<pre><code class="ts">// Exclude null and undefined from T
+type NonNullable&lt;T&gt; =
+  T extends null | undefined ? never : T
+
+// Obtain the parameters of a function type in a tuple
+type Parameters&lt;T&gt; =
+  T extends (...args: infer P) =&gt; any ? P : never
+
+// Obtain the parameters of a constructor function type in a tuple
+type ConstructorParameters&lt;T&gt; =
+  T extends new (...args: infer P) =&gt; any ? P : never
+
+// Obtain the return type of a function type
+type ReturnType&lt;T&gt; =
+  T extends (...args: any[]) =&gt; infer R ? R : any
+
+// Obtain the return type of a constructor function type
+type InstanceType&lt;T&gt; =
+  T extends new (...args: any[]) =&gt; infer R ? R : any
+</code></pre>
+
+<a name="Further.reading"></a>
+<h2>Further reading</h2>
+
+<ul>
+<li><a href="https://www.typescriptlang.org/docs/handbook/release-notes/typescript-2-8.html">TypeScript 2.8 release notes</a></li>
+<li><a href="https://github.com/Microsoft/TypeScript/pull/21316">Microsoft/Typescript#21316</a> Conditional types pull request</li>
+<li><a href="https://github.com/Microsoft/TypeScript/pull/21496">Microsoft/Typescript#21496</a> <code>infer</code> pull request</li>
+<li><a href="https://github.com/Microsoft/TypeScript/blob/a2205ad53d8f65a129a552b752d1e06fee3d41fc/lib/lib.es5.d.ts#L1446">lib.es5.d.ts#L1446</a>
+built-in conditional type definitions</li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Announcing: Artsy x React Native]]></title>
+    <link href="http://artsy.github.io/blog/2018/06/03/Announcing-Artsy-x-React-Native/"/>
+    <updated>2018-06-03T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/06/03/Announcing-Artsy-x-React-Native</id>
+    <content type="html"><![CDATA[<p>React Native has a lot of buzz around it. It is some serious and cool tech, yet can feel like a big departure from
+your native iOS codebase. At Artsy, we like it. It has been the right choice for us. We've <a href="http://artsy.github.io/search/?q=react+native">documented</a> <a href="http://artsy.github.io/series/react-native-at-artsy/">our</a>
+<a href="http://artsy.github.io/blog/2016/08/15/React-Native-at-Artsy/">journey</a> and <a href="http://artsy.github.io/blog/2018/03/17/two-years-of-react-native/">reasoning</a> quite extensively, but naturally, developers around the world are still wondering
+whether the trade-offs make sense to <em>their</em> team, and <em>their</em> situation.</p>
+
+<p>Enter <a href="https://www.artsy.net/x-react-native">Artsy x React-Native</a>.</p>
+
+<p>Who better to partner with than Facebook? We're bringing a day full of hands-on informative insight and practical
+play. With the focus on what building world class applications with RN can be like.</p>
+
+<p>We'll demo, through talks and workshops, how to add React Native bit by bit to an existing codebase, set your
+tooling up for success, and create solid animations.</p>
+
+<p>We want <a href="https://www.artsy.net/x-react-native">Artsy x React-Native</a> to be about getting you up to speed with the framework, so you can make your
+own decisions going forward.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[JavaScriptures 2 - TypeScript]]></title>
+    <link href="http://artsy.github.io/blog/2018/05/02/JavaScriptures-2-TypeScript/"/>
+    <updated>2018-05-02T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/05/02/JavaScriptures-2-TypeScript</id>
+    <content type="html"><![CDATA[<p>The second in our JavaScriptures series on the Artsy <a href="http://artsy.github.io/blog/2017/02/05/Front-end-JavaScript-at-Artsy-2017/">omakase</a>. This one is a deep dive in TypeScript with
+a minor-focus on working with React. We run through a series of excercises you can run <a href="https://github.com/artsy/javascriptures/tree/master/2_intro-to-typescript">through yourself
+here</a>.</p>
+
+<p>It's ran by <a href="https://twitter.com/alloy">@alloy</a> and <a href="https://github.com/sarahscott">Sarah Scott</a> and covers compilation, errors, default types, interfaces,
+inference, generics and how they all come together in your tools.</p>
+
+<!-- more -->
+
+
+
+
+<center>
+<iframe width='100%' height='400' src='https://www.youtube.com/embed/KXPZvjCUlAA' frameborder='0' allowfullscreen></iframe>
+</center>
+
+
+
+
+<p style='text-align:right;'><a href="https://speakerdeck.com/artsyopensource/javascriptures-2-typescript">
+Slides on Speakerdeck
+</a></p>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Apogee Technical Retrospective]]></title>
+    <link href="http://artsy.github.io/blog/2018/02/06/apogee-technical-retrospective/"/>
+    <updated>2018-02-06T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/02/06/apogee-technical-retrospective</id>
+    <content type="html"><![CDATA[<p>We've previously covered <a href="/blog/2018/02/02/artsy-apogee/">what Apogee is</a> and <a href="/blog/2018/01/24/kubernetes-and-hokusai/">how it's deployed</a>, so all that's left to cover is the technology used to build it. As a refresher: Apogee is a Google Sheets Add-on we built to help our Auctions Ops team transform the data given to us by our partners into a format that our CMS can understand. This process, done manually up until now, takes a long time and is a perfect candidate for automation.</p>
+
+<p>Apogee had some really interesting technical challenges that I enjoyed solving, and I'm excited to share some lessons I learned. So let's dive in!</p>
+
+<!-- more -->
+
+
+<p>We built a prototype as a "pure" Add-on, written only inside Google's sandbox, but that approach wouldn't work for us in production: the Add-on environment was just too difficult to work with. Google expects you to write Add-ons in their in-browser <a href="http://script.google.com">Script Editor</a> and – while whether or not that editor is <em>good</em> is a matter of preference – the environment isn't suited for collaborating or unit testing. Additionally, we could not get Add-on deploys automated, so we'd like to minimize how often we <em>have</em> to deploy.</p>
+
+<p>So we split things up. Instead of building all Apogee's logic into an Add-on, we decided to build two pieces: a very thin Add-on and a Rails server with all the real logic.</p>
+
+<p>(Because Apogee necessarily includes information about how our partners format their data, we decided not to open source it. Data formats are <em>probably</em> not sensitive, but that's a judgement best left up to our partners.)</p>
+
+<a name="Apogee.Add-on"></a>
+<h2>Apogee Add-on</h2>
+
+<p>The Add-on we built is very simple, by design. Our goal was to make an Add-on that was flexible enough such that we would need to deploy it less frequently than adding new parsers.</p>
+
+<p>Add-on responsibilities include:</p>
+
+<ul>
+<li>fetching the available parsers from the server.</li>
+<li>setting up an Add-on user interface (a menu of partners, each with available parsers).</li>
+<li>responding to invocations from that interface.</li>
+</ul>
+
+
+<p>Based on the parser selected by the user, Apogee gathers the required data from the current spreadsheet, sends it to the server for processing, and appends the results to the sheet. Pretty straightforward, you'd think.</p>
+
+<p>Unfortunately, Google Add-ons are a bit... strange. The Add-on itself is executed in Google's datacentres (not the user's browser) and is written in <a href="https://developers.google.com/apps-script/guides/services/#basic_javascript_features">JavaScript 1.6-ish</a>. Specifically, it runs with JavaScript 1.6, plus some features from 1.7, plus some other features from 1.8, and also <a href="https://developers.google.com/apps-script/guides/services/advanced">"Google Advanced Services"</a>. The execution environment also lacks an event loop, which makes sense from Google's perspective (their servers need to know if a script execution has completed) but is still a bit unusual.</p>
+
+<p>Rather than deal with a weird version of JavaScript, we decided to write the Add-on in <a href="https://www.typescriptlang.org">TypeScript</a> and compile down to something Google can execute. We also found <a href="https://www.npmjs.com/package/@types/google-apps-script">open source typings</a> for the Google APIs, which helped a lot. Google also provides access to certain whitelisted libraries, including <a href="https://lodash.com">Lodash</a>, which is handy.</p>
+
+<p>Add-ons also have a somewhat complex permissions and authentication model. The <a href="https://developers.google.com/apps-script/add-ons/lifecycle">documentation</a> provided is a great illustration of why <em>complete</em> documentation is not necessarily <em>effective</em> documentation. If you already understand what you're doing, the docs are a good reference, but I found them difficult to learn from. I really like <a href="https://twitter.com/kosamari/status/852319140060823553">this explanation</a> of how to structure documentation like unit tests.</p>
+
+<p>Permissions vary wildly depending on the execution context. For example, the <code>onOpen</code> callback is able to make network requests when the script is run as an attachment to a spreadsheet, but not when deployed. This makes it difficult to populate our menu UI, which is based off an API response. I learned to not have confidence everything was working until I saw it work end-to-end.</p>
+
+<p>One other peculiarity of Google's API is how UI callbacks work. You could create a menu for your Add-on with the following code:</p>
+
+<pre><code class="js">SpreadsheetApp.getUi()
+  .createAddonMenu()
+  .addItem('Do something', 'doSomething')
+  .addToUi()
+
+function doSomething() {
+}
+</code></pre>
+
+<p>You'll notice that the callback function is specified by a <em>string</em> representing a function name (and not as a function itself, which would be more idiomatic). So, for every menu item, there must exist a corresponding function in the global scope with a corresponding name. Sadly, no parameters are passed to these callbacks, so it's impossible for a function to determine which menu item it was invoked by. Therefore, every menu item <em>must</em> have exactly <em>one</em> corresponding function. That presents a problem for an Add-on with a dynamic menu.</p>
+
+<p>The Add-on isn't executed in a browser; we're running on Google's datacentres so let's just brute-force this. Our menu is a list of partner names, which is itself a submenu of parsers specific to that partner. That means that each menu item (and corresponding callback) can be indexed by two integers: a partner index and a operation index. So now we have a way to map from our user interface to a specific operation to perform inside <em>one</em> common menu handler.</p>
+
+<p>Let's take a look at the actual code.</p>
+
+<pre><code class="ts">interface Operation {
+  name: string
+  columns: string[]
+  token: string
+}
+
+interface Partner {
+  name: string
+  operations: Operation[]
+}
+
+// Sets up the Add-on menu and submenus.
+function setupAddon(ui: Partner[]) {
+  // Reduce the ui to a list of submenus.
+  const addOnMenu = ui.reduce((menu, partner, partnerIndex) =&gt; {
+    // Reduce the operations list to a list of menu items.
+    return menu.addSubMenu(partner.operations.reduce((memo, operation, operationIndex) =&gt; {
+      return memo.addItem(operation.name, `partner${partnerIndex}Operation${operationIndex}`)
+    }, SpreadsheetApp.getUi().createMenu(partner.name)))
+  }, SpreadsheetApp.getUi().createAddonMenu())
+  // Add the generated menu to the Add-on UI.
+  addOnMenu.addToUi()
+}
+</code></pre>
+
+<p>Each menu has a callback function named something like <code>partnerXOperationY</code>. Then we just generated a few thousand functions that match that format and call a shared handler <em>with</em> <code>X</code> and <code>Y</code> as parameters. The generated code looks like this:</p>
+
+<pre><code class="js">function partner0Operation0() {
+    sharedHandler(0, 0);
+}
+function partner0Operation1() {
+    sharedHandler(0, 1);
+}
+function partner0Operation2() {
+    sharedHandler(0, 2);
+}
+
+function sharedHandler(partnerIndex, operationIndex) {
+    // TODO: Look up the appropriate parser to use.
+}
+</code></pre>
+
+<p>It's not elegant, but it works. Actually, I think it does have a certain elegance, given the constraints it has to operate within.</p>
+
+<p>So that's it! The rest of the challenges were just weird permissions issues or config problems, but the Add-on was pretty easy to build. The file generated by the TypeScript compiler is only 166 lines long, and the file with all our menu callbacks is "only" 8000 lines long. Next, let's talk about the server.</p>
+
+<a name="Apogee.Server"></a>
+<h2>Apogee Server</h2>
+
+<p>So, Rails' philosophy is "<a href="https://en.wikipedia.org/wiki/Convention_over_configuration">convention over configuration</a>", which is pretty great as long as you know the conventions. I'd never run <code>rails new</code> before. Also, that philosophy works best when you're building <em>conventional</em> apps. Because Apogee is a bit unconventional, I was going to write Apogee in Sinatra before my colleague suggested I use Rails in <a href="http://guides.rubyonrails.org/api_app.html">API-only mode</a> instead. It seemed a bit overkill, but I also didn't want to pass up the chance to finally learn Rails.</p>
+
+<p>The server has two endpoints:</p>
+
+<ul>
+<li><code>/ui</code> provides a list of partners and their respective parsers.</li>
+<li><code>/columns</code> accepts spreadsheet columns and returns processed data (cell contents and a background colour to indicate our confidence in parsed results).</li>
+</ul>
+
+
+<p>We needed a way for the server to specify all its operations in a way that they could be invoked through the second endpoint. We decided to use a token-based approach: each parser has a token that can be used to invoke the parser later on. This dovetails with how I structured the parsers, too.</p>
+
+<p>Each partner is defined by a submodule within the <code>Apogee::Parser</code> module, and each parser is defined by a class within that partner module. Let's take a look at some code.</p>
+
+<pre><code class="rb">module Apogee
+  module Parser
+    module Skinner
+      extend Apogee::BaseParser
+
+      class DimensionsParser
+        # Name to show in Add-on UI.
+        def self.menu_name
+          "Parse dimensions from Description column"
+        end
+
+        # Columns required by the `/columns` endpoint.
+        def self.column_names
+          %w[Description]
+        end
+
+        # Parse the columns, called from the `/columns` endpoint.
+        def self.parse(columns)
+          # TODO: parse the columns.
+        end
+      end
+    end
+  end
+end
+</code></pre>
+
+<p>Each class within a partner is expected to have those three class methods.</p>
+
+<p>So now that we have a defined structure for our parsers, we can use Ruby reflection to collect a list of partner modules:</p>
+
+<pre><code class="rb">Parser.constants
+  .select { |c| Parser.const_get(c).is_a? Module }
+  .map do |c|
+    {
+      name: c,
+      operations: Parser.const_get(c).public_parsers
+    }
+end
+</code></pre>
+
+<p>Each module also has a <code>public_parsers</code> function (inherited from <code>Apogee::BaseParser</code>) which also uses reflection:</p>
+
+<pre><code class="rb">def public_parsers
+  constants
+    .select { |c| const_get(c).is_a? Class }
+    .map { |c| const_get(c) }
+    .map do |klass|
+      {
+        klass: klass.to_s,
+        name: klass.menu_name,
+        columns: klass.column_names,
+        token: Digest::SHA256.base64digest(klass.to_s)
+      }
+    end
+end
+</code></pre>
+
+<p>This code collects all the Ruby classes inside a module into a data structure that can be consumed by the Apogee Add-on through the <code>/ui</code> endpoint. As a bonus, the tokens are generated from the SHA256 hash of the fully-qualified parser class names. And we also avoid having to maintain a separate list of parsers that I would inevitably forget to update. Win-win.</p>
+
+<p>All that's left to do is to lookup a parser class from a token. This is as easy as finding the class with the matching token and calling its <code>parse</code> function.</p>
+
+<pre><code class="rb">parser = partners
+  .map { |p| p[:operations] }
+  .flatten
+  .find { |op| op[:token] == token }
+Object.const_get(parser[:klass]).parse(columns)
+</code></pre>
+
+<p>Neat!</p>
+
+<p>This approach is <em>good</em>, but strikes me as overly object-oriented. <em>Most</em> of the parsers we're going to write are going to do the same thing: they have the same three methods and the <code>parse</code> method is basically just matching each spreadsheet cell against a regular expression. We can make a better abstraction.</p>
+
+<p>Since the parsers are defined by the presence of a class within a partner module, we can use metaprogramming to abstract away all the common pieces and add classes to the module programmatically. The implementation is too in-depth to explain in detail here, but our partner module above could be rewritten to look like the following:</p>
+
+<pre><code class="rb">module Apogee
+  module Parser
+    module Skinner
+      extend Apogee::BaseParser
+
+      add_single_column_parser(
+        class_name: 'DimensionsParser',
+        menu_name: 'Parse dimensions from Description column',
+        column_name: 'Description',
+        regex: %r{REGEX GOES HERE},
+        new_columns: %w[Height Width Depth Unit]
+      ) do |match|
+        # TODO: Process each cell.
+      end
+    end
+  end
+end
+</code></pre>
+
+<p>I created two such methods: one that uses a single regex, and another that uses multiple regexes (for more complex needs). I also wrote a handy <code>add_all_parser</code> method which adds a sort of meta-parser, which collates the results from calling <code>parse</code> on all the <em>other</em> parsers in that module. Our Ops team just needs to click "Parse everything" and the entire spreadsheet is processed with all the parsers in seconds.</p>
+
+<p>And of course, since all our parsers are just Ruby classes, they were easy to unit test.</p>
+
+<p>I've done metaprogramming in other languages, and it was a lot of fun to use it in Ruby. I ran the code by my colleagues who are more experienced in Ruby than I am, and documented everything thoroughly. It's a real shame the codebase isn't open source, because I'm really proud of the approach and would love to share it with you.</p>
+
+<a name="Apogee.Authentication"></a>
+<h2>Apogee Authentication</h2>
+
+<p>We needed to make sure that only the Add-on itself was invoking the server's endpoints. Not because the server has sensitive data – Apogee's server has no database and doesn't access any APIs – but just because it's good practice to limit access to services to only who needs them.</p>
+
+<p>We evaluated a bunch of prospective auth strategies, including (but not limited to) the following:</p>
+
+<ul>
+<li>Whitelist Google datacentre IP addresses, block all others.</li>
+<li>HTTP Basic Auth.</li>
+<li>Shared secret.</li>
+<li>OAuth with Artsy's API, by the user upon Add-on installation.</li>
+<li>Something totally custom, or a combination of any of these.</li>
+</ul>
+
+
+<p>After thoughtful discussion, we decided on a solution that works for us. I'm not going to specify what we used – not because I'm that concerned about the security, but because each project and team will have their own needs. If you build a server, think carefully about what kind of authentication makes sense for you and your team.</p>
+
+<a name="Conclusion"></a>
+<h2>Conclusion</h2>
+
+<p>Apogee was a really fun project. It had a defined scope, so it was a good first Rails project for me to tackle. The Add-on helps my colleagues on the Auctions Ops team do their jobs easier, so it was intrinsically rewarding to build. And it turns out that our Gallery Partnerships team also has to import a lot of partner data into Artsy's CMS, so I'm now exploring ways Apogee can help them, too.</p>
+
+<p>As a closing note, I want to discuss something that's been on my mind lately. I've been developing iOS apps <a href="https://ashfurrow.com/blog/5-years-of-ios/">since 2009</a>, and have a <a href="https://ashfurrow.com/books/">very intimate knowledge</a> of Objective-C, Swift, and UIKit. For a long time, I actually avoided learning new languages and frameworks because they intimidated me – starting over in a new framework, from scratch, felt like a step backward.</p>
+
+<p>I think this is a common frame of mind, among iOS developers, among all developers. But now I regret avoiding new technology for so long. The languages and tools that I knew had become part of my identity: I was an "iOS Developer." That identity was a source of strength, but was also a limitation.</p>
+
+<p>Developers solve problems. Sometimes those problems are best solved with iOS apps. And sometimes, they're best solved with spreadsheet plugins. After <a href="https://ashfurrow.com/blog/swift-vs-react-native-feels/">realizing</a> last year that I was limiting myself, I'm still coming to terms with how that impacts my identity. But I'll say this: if <em>I</em> can leave the safety blanket of the iOS world and build something completely new, so can you. Don't let your expertise and experience limit what you think you can build.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Babel 7 + TypeScript]]></title>
+    <link href="http://artsy.github.io/blog/2017/11/27/Babel-7-and-TypeScript/"/>
+    <updated>2017-11-27T14:18:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2017/11/27/Babel-7-and-TypeScript</id>
+    <content type="html"><![CDATA[<p>At Artsy we &lt;3 <a href="https://www.typescriptlang.org/">TypeScript</a>. We use it with React Native via <a href="https://github.com/artsy/emission">Emission</a> and on the web via <a href="https://github.com/artsy/reaction">Reaction</a>. Until recently, however, projects that required the use of Babel had to implement convoluted tooling pipelines in order to work with the TypeScript compiler, increasing friction in an already complex landscape. (An example of this is Emission's use of Relay, which requires <a href="https://facebook.github.io/relay/docs/babel-plugin-relay.html#setting-up-babel-plugin-relay">babel-plugin-relay</a> to convert <code>graphql</code> literals into require calls.) Thankfully, those days <a href="https://github.com/babel/babel/tree/master/packages/babel-preset-typescript">are over</a>. Read on for an example project, as well as some advice on how to avoid common pitfalls when working with the new beta version of Babel 7.</p>
+
+<!-- more -->
+
+
+<p>Babel configurations can be complicated. They take time to set up and maintain and can often contain some pretty <a href="https://github.com/kentcdodds/babel-macros">far-out features</a> that make interop with other environments difficult. That's why we were elated when <a href="https://github.com/babel/babylon/pull/523">this PR</a> appeared in the wild from <a href="https://github.com/andy-ms">@andy-ms</a>, a developer on the TypeScript team, announcing a new parser for Babylon. <a href="https://github.com/babel/babel/tree/master/packages/babel-preset-typescript">@babel/preset-typescript</a> arrived soon after and we felt it was finally time to give it a try. There was a catch, however: TypeScript support only works with Babel 7+!</p>
+
+<p><strong>TLDR; <a href="https://github.com/damassi/babel-7-typescript-example" target="_blank">Check out the project on GitHub ></a></strong></p>
+
+<p>Here's list of setup issues we faced in no specific order:</p>
+
+<a name="L1..New..babel.Namespace"></a>
+<h2>1) New @babel Namespace</h2>
+
+<p>One of the first things Babel 7 users will notice is the package ecosystem now exists as a <a href="https://github.com/babel/babel/tree/master/packages">monorepo</a> and all NPM modules are namespaced behind the <code>@babel</code> org address. Packages that used to be installed via</p>
+
+<pre><code class="sh">yarn add -D \
+  babel-core \
+  babel-preset-react \
+  babel-preset-stage-3
+  ...
+</code></pre>
+
+<p>are now installed via
+<code>sh
+yarn add -D \
+  @babel/core \
+  @babel/preset-react \
+  @babel/preset-stage-3
+  ...
+</code>
+which immediately creates upgrade conflicts between libraries that use Babel 6 and Babel 7. For example, <code>babel-jest</code> internally points to <code>babel-core</code> which supports a <a href="https://github.com/facebook/jest/blob/master/packages/babel-jest/package.json#L19">version range between 6 and 7</a> -- but! -- <code>babel-core</code> is now <code>@babel/core</code> so this breaks.</p>
+
+<p>This wasn't immediately apparent at the time, and so we would often find errors like</p>
+
+<pre><code class="sh">Error: Could not find preset "@babel/env" relative to directory
+</code></pre>
+
+<p>These errors appeared ambiguous because the folder structure was correct and commands like <code>yarn list @babel/preset-env</code> yielded expected results:</p>
+
+<pre><code class="sh">└─ @babel/preset-env@7.0.0-beta.32
+✨  Done in 0.58s.
+</code></pre>
+
+<p>Why was the package not found? Digging deeper, it seemed like Babel 6 was still being used somewhere. Running <code>yarn list babel-core</code> revealed the culprit:</p>
+
+<pre><code class="sh">└─ babel-core@6.25.0
+✨  Done in 0.58s.
+</code></pre>
+
+<p>Thankfully, <a href="https://github.com/babel/babel-bridge">babel-bridge</a> exists to "bridge" the gap, but one can see how complications can and will arise. Further, not all packages have implemented this fix and so we had to rely on <code>yarn</code>'s new <a href="https://yarnpkg.com/lang/en/docs/selective-version-resolutions/">selective dependency resolution</a> feature which overrides child dependency versions with a fixed number set directly in <code>package.json</code>:</p>
+
+<pre><code class="json">"resolutions": {
+  "babel-core": "^7.0.0-bridge.0"
+},
+</code></pre>
+
+<p>With this in place many of our errors disappeared and packages like <code>jest</code> now worked like a charm.</p>
+
+<a name="L2..Missing.ES2015.Features"></a>
+<h2>2) Missing ES2015 Features</h2>
+
+<p>Another error we faced early on surrounded language features that worked with Babel <em>or</em> TypeScript, but not with Babel <em>and</em> TypeScript. For example, take an existing Babel project that points to <code>index.js</code> as an entrypoint, configure it to support TypeScript via Babel 7, and then run it:</p>
+
+<pre><code class="json">"scripts": {
+  "start": "babel-node index.js"
+}
+</code></pre>
+
+<pre><code class="js">// index.js
+require('@babel/register')({
+  extensions: ['.js', '.jsx', '.ts', '.tsx']
+})
+require('app/server.ts')
+</code></pre>
+
+<pre><code class="javascript">// app/server.ts
+console.log('hi!')
+</code></pre>
+
+<p>Running</p>
+
+<pre><code class="sh">yarn start
+$ babel-node index.js
+
+hi!
+✨  Done in 1.88s.
+</code></pre>
+
+<p>Everything seems to be working; our <code>.js</code> entrypoint is configured to support <code>.ts</code> extensions and we kick off the boot process.</p>
+
+<p>Let's now try to import a file from within <code>app/server.ts</code>:</p>
+
+<pre><code class="javascript">import path from 'path'
+console.log(`Hello ${path.resolve(process.cwd())}!`)
+</code></pre>
+
+<pre><code class="sh">yarn start
+$ yarn run v1.3.2
+$ babel-node index.js
+sites/src/index.tsx:1
+(function (exports, require, module, __filename, __dirname) { import path from 'path'
+                                                              ^^^^^^
+
+SyntaxError: Unexpected token import
+</code></pre>
+
+<p>Maybe my <code>tsconfig.json</code> file is misconfigured?</p>
+
+<pre><code class="json">{
+  "compilerOptions": {
+    "module": "es2015"
+  }
+}
+</code></pre>
+
+<p>Nope, all good. How about my <code>.babelrc</code>?</p>
+
+<pre><code class="json">{
+  "presets": [
+    ["@babel/env", {
+      "targets": {
+        "browsers": ["last 2 versions"]
+      }
+    }],
+    "@babel/stage-3",
+    "@babel/react",
+    "@babel/typescript"
+  ]
+}
+</code></pre>
+
+<p>We're using <a href="https://github.com/babel/babel/tree/master/packages/babel-preset-env"><code>@babel/preset-env</code></a> which handles selecting the JS features we need, so thats not it. And anyways, doesn't TypeScript support <code>ES2015</code> modules right out of the box?</p>
+
+<p>Continuing, how about specifying the extension list directly in <code>package.json</code>:</p>
+
+<pre><code class="json">"start": "babel-node --extensions '.ts,.tsx' index.js"
+</code></pre>
+
+<p>Still no go 🙁</p>
+
+<p>Last try: Create a new entrypoint file that uses a <code>.ts</code> extension and then use <em>that</em> to boot the rest of the app:</p>
+
+<pre><code class="json">"start": "babel-node --extensions '.ts,.tsx' index.ts"
+</code></pre>
+
+<pre><code class="javascript">// index.ts
+import './app/server'
+</code></pre>
+
+<pre><code class="sh">yarn start
+$ yarn run v1.3.2
+$ babel-node index.js
+Hello /sites!
+</code></pre>
+
+<p>Once this change was in place, we could ditch <code>@babel/register</code> and instead rely on the <code>--extensions</code> configuration from <code>package.json</code>, just like the <a href="https://github.com/babel/babel/tree/master/packages/babel-preset-typescript">README</a> suggests (doh! 🤦).</p>
+
+<p><strong>NOTE:</strong> If you're using <a href="https://github.com/tleunen/babel-plugin-module-resolver"><code>babel-plugin-module-resolver</code></a> to support absolute path imports make sure to update the <code>extensions</code> <a href="https://github.com/tleunen/babel-plugin-module-resolver#options">option</a> with <code>.ts</code> and <code>.tsx</code>.</p>
+
+<a name="L3..Type-Checking"></a>
+<h2>3) Type-Checking</h2>
+
+<p>Lastly, since Babel 7 is now responsible for compiling our TypeScript files we no longer need to rely on TypeScript's own <code>tsc</code> compiler to output JavaScript and instead just use it to type-check our code. Again, in <code>package.json</code>:</p>
+
+<pre><code>"type-check": "tsc"
+</code></pre>
+
+<p>This reads in settings located in <code>tsconfig.json</code>:
+<code>json
+{
+  "compilerOptions": {
+    "noEmit": true,
+    "pretty": true
+    ...
+  }
+}
+</code></p>
+
+<p>Notice the <code>noEmit</code> flag? That tells <code>tsc</code> not to output any JS and instead only check for correctness. The "pretty" flag gives us nicer type-checker output.</p>
+
+<p>While this seemed to be all that was needed, running <code>yarn type-check</code> would throw an error:</p>
+
+<pre><code>$ yarn type-check
+yarn run v1.3.2
+$ tsc
+
+node_modules/@types/jest/index.d.ts(1053,34): error TS2304: Cannot find name 'Set'.
+
+1053         onRunComplete?(contexts: Set&lt;Context&gt;, results: AggregatedResult): Maybe&lt;Promise&lt;void&gt;&gt;;
+                                      ~~~
+
+error Command failed with exit code 1.
+</code></pre>
+
+<p>Why is it TypeChecking my <code>node_modules</code> folder when <code>rootDirs</code> is set to <code>src</code>? It looks like we missed a TypeScript setting:</p>
+
+<pre><code class="json">{
+  "compilerOptions": {
+    "skipLibCheck": true
+  }
+}
+</code></pre>
+
+<p>With that last missing piece everything now works:</p>
+
+<pre><code class="sh">yarn type-check -w
+yarn run v1.3.2
+$ tsc -w
+
+src/index.tsx(5,7): error TS2451: Cannot redeclare block-scoped variable 'test'.
+
+5 const test = (foo: string) =&gt; foo
+        ~~~~
+
+src/index.tsx(6,6): error TS2345: Argument of type '2' is not assignable to parameter of type 'string'.
+
+6 test(2)
+       ~
+</code></pre>
+
+<p>Proper type-checking, but compilation handled by Babel 😎.</p>
+
+<a name="L4..TypeScript.and.Flow"></a>
+<h2>4) TypeScript and Flow</h2>
+
+<p>Unfortunately, the TypeScript and Flow plugins for Babel cannot be loaded at the same time, as there could be ambiguity about how to parse some code.</p>
+
+<p>This is usually ok, because the general advice is to compile your library code to vanilla JS before publishing (and thus strip type annotations), but there are packages that could still enable the Flow plugin.</p>
+
+<p>For example, <a href="https://github.com/babel/babel/pull/6118">the React Babel preset</a> in the past would enable the Flow plugin without really needing it for its own source, but just as a default for consumers of React.</p>
+
+<p>This issue cannot really be worked around without patching the code that loads the plugin. Ideally this patch would be sent upstream so that the issue goes away for everybody.</p>
+
+<p>This issue can be worked around by either eliminating the dependency on the preset that loads the plugin, for instance by depending on the individual plugins directly, or if that’s not possible by patching the code. Ideally that patch should go upstream, of course, but if you need something immediate then we highly recommend <a href="https://github.com/ds300/patch-package">patch-package</a>, as can be seen used in <a href="https://github.com/artsy/emission/pull/780/files#diff-29cf179661e0495e62e9cd67dd0307dd">this example</a>.</p>
+
+<p>There’s even projects that publish their Flow annotated code <em>without</em> compiling/stripping type annotations, the one we know of and use is <a href="https://github.com/facebook/react-native/issues/7850#issuecomment-225415645">React Native</a>. There’s no way around this other than patching the code. You may think that you could use a plugin like <a href="https://babeljs.io/docs/plugins/transform-flow-strip-types/">babel-plugin-transform-flow-strip-types</a>, but in reality that transform needs the Flow plugin to be able to do its work and thus is a no-go.</p>
+
+<p>The way we’ve worked around that is by <a href="https://github.com/artsy/emission/pull/780/files#diff-b9cfc7f2cdf78a7f4b91a753d10865a2R36">stripping Flow type annotations from <em>all</em> dependencies</a> at <a href="https://github.com/artsy/emission/pull/780/files#diff-b9cfc7f2cdf78a7f4b91a753d10865a2R39">dependency install time</a> using the <a href="https://github.com/flowtype/flow-remove-types"><code>flow-remove-types</code> tool</a>. It can get a little slow on many files which is why we do a bunch of filtering to only process files that have <code>@flow</code> directives, the downside is that some files don’t have directives like they should and so <a href="https://github.com/artsy/emission/pull/780/files#diff-d6d30dd9bd4cdb1ac0d1268937508814R65">we patch those to add them</a> using the aforementioned <a href="https://github.com/ds300/patch-package">patch-package</a>.</p>
+
+<a name="L5..Limitations.in.TypeScript.support"></a>
+<h2>5) Limitations in TypeScript support</h2>
+
+<p>It is important to note that you <em>may</em> run into a few cases that TypeScript’s Babel plugin does/can not support. From <a href="https://github.com/babel/babel/blob/master/packages/babel-plugin-transform-typescript/README.md#babelplugin-transform-typescript">the plugin’s README</a>:</p>
+
+<blockquote><p>Does not support <code>namespace</code>s or <code>const enum</code>s because those require type information to transpile.
+Also does not support <code>export =</code> and <code>import =</code>, because those cannot be transpiled to ES.next.</p></blockquote>
+
+<p>The lack of namespace support hasn’t been a problem for us, we’re only using it in one place which could easily be changed to use regular ES6 modules as namespace. This is also why for instance the ‘recommended’ list of TSLint checks includes <a href="https://palantir.github.io/tslint/rules/no-namespace/">the <code>no-namespace</code> rule</a>.</p>
+
+<p>The <code>const enum</code> feature is a runtime optimization that will cause the compiler to inline code. We don’t have a need for this at the moment, but <a href="https://github.com/babel/babel/issues/6476">some discussion</a> is happening to possibly still being able to make use of this feature when compiling production builds with the TypeScript compiler instead.</p>
+
+<p>The <code>export =</code> and <code>import =</code> syntax is meant to <a href="https://github.com/Microsoft/TypeScript-Handbook/blob/master/pages/Modules.md#export--and-import--require">work with CommonJS and AMD modules</a>; however, we strictly use ES6 modules.</p>
+
+<p><strong>References:</strong></p>
+
+<ul>
+<li><a href="https://github.com/damassi/babel-7-typescript-example">babel-7-typescript-example</a></li>
+<li><a href="https://github.com/babel/babel/tree/master/packages/babel-preset-typescript">babel-preset-typescript</a></li>
+<li><a href="https://github.com/artsy/emission">emission</a></li>
+<li><a href="https://github.com/artsy/reaction">reaction</a></li>
+<li><a href="https://github.com/ds300/patch-package">patch-package</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+</feed>

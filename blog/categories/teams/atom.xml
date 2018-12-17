@@ -1,0 +1,387 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: teams | Artsy Engineering]]></title>
+  <link href="http://artsy.github.io/blog/categories/teams/atom.xml" rel="self"/>
+  <link href="http://artsy.github.io/"/>
+  <updated>2018-12-16T10:16:31+00:00</updated>
+  <id>http://artsy.github.io/</id>
+  <author>
+    <name><![CDATA[]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Engineering Highlights]]></title>
+    <link href="http://artsy.github.io/blog/2018/10/18/long-term-highlights/"/>
+    <updated>2018-10-18T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/10/18/long-term-highlights</id>
+    <content type="html"><![CDATA[<p>Engineering is an inherently long-term process. The Artsy engineering team has been around for 7 years, and that's
+quite a lot of time to get things done. We use software that keeps track of changes over time thanks to source
+control, but tools like git only help keep track of small passages of time. I want to keep track of events that
+could take months to ship.</p>
+
+<p>We've been doing a lot of long-term introspection as a team in 2018. Externally, this has been visible through
+things like opening our docs and creating our engineering principles. I'm expanding on this with an idea that I
+took from my work in building large open source projects: <a href="https://github.com/artsy/README/blob/master/culture/highlights.md#readme">Highlight docs</a>.</p>
+
+<!-- more -->
+
+
+<p>I've been the main contributor for <a href="https://danger.systems/">Danger</a> and <a href="https://github.com/danger/peril">Peril</a> for about three years, working mostly solo, and it can
+be hard to feel like you're actually getting things done. There's an infinite backlog of people's requests for
+improvements, and polite mentions of the flaws in your work. So, as a counter-balance it's nice to take stock of
+events you're proud of. I initially mocked this out as <a href="https://github.com/danger/peril/issues/235">an issue in the peril repo</a> but when I
+re-applied the idea to the whole of Artsy I used our existing open documentation repo <a href="https://github.com/artsy/README/"><code>artsy/README</code></a>
+instead.</p>
+
+<p>The core idea isn't complicated, however it's somewhat time-consuming and requires collaborators. I used the best
+method I know for getting a lot of people's attention: spamming slack threads asking folks what were some of their
+highlights. I used these to fuel the main arcs of the doc.</p>
+
+<p>A lot of the time, just starting something like this and putting some effort in up-front means others will start to
+participate. The trickiest part was finding the right definitive links for a particular event. Ideally we have open
+links (so people without private GitHub access (internally and externally) can enjoy them) but sometimes the right
+link is private and that's ok. It's not open source by diktat.</p>
+
+<p>Trying to find the right balance between an "Artsy" event vs an "Engineering" event can sometimes be a bit vague,
+but I like to believe that more is more. It's about pointing out important events, so more is always a net
+positive. With that in mind, here's a few of ours, the rest is a click away:</p>
+
+<p><a href="https://github.com/artsy/README/blob/master/culture/highlights.md#readme"><img src="/images/highlights/highlights.png"></a></p>
+
+<p>I think I'm going to make one of these with every new large scale project I work on, I kinda wish we had one for
+the Artsy iOS app now. Maybe I'm going to need to do that now. Ergh, this is what I get for writing blog posts.</p>
+
+<p>I'd love to see some other companies or OSS projects using this idea - let me know in the comments if you are!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Defining Our Engineering Guiding Principles]]></title>
+    <link href="http://artsy.github.io/blog/2018/08/22/engineering-guiding-principles/"/>
+    <updated>2018-08-22T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/08/22/engineering-guiding-principles</id>
+    <content type="html"><![CDATA[<p>The Artsy Engineering team recently underwent the process of defining our guiding principles; you can read through the pull request <a href="https://github.com/artsy/meta/pull/41">here</a> and the finished principles <a href="https://github.com/artsy/README/blob/master/culture/engineering-principles.md">here</a>. In this blog post, I'd like to use our experience of defining these to answer the following questions:</p>
+
+<ul>
+<li>Why define engineering guiding principles?</li>
+<li>What makes principles different from company values?</li>
+<li>How to define guiding principles?</li>
+</ul>
+
+
+<p>Let's dive in.</p>
+
+<!-- more -->
+
+
+<a name="Why.Define.Engineering.Principles."></a>
+<h2>Why Define Engineering Principles?</h2>
+
+<p>Artsy's CEO has a <a href="https://www.artsy.net/article/carter-cleveland-why-define-company-values">blog post</a> that discusses why you should define company values and, unsurprisingly, a lot of the same rationale applies to an engineering team's guiding principles. In summary:</p>
+
+<ul>
+<li>Undefined principles lead to cultural debt (similar to technical debt, but in terms of a team's culture).</li>
+<li>Defined values lead to greater empowerment (engineers feel safe making decisions on their own, based on the principles).</li>
+<li>Defined values reduce the risk of unconscious bias (we help our decisions get made consistently).</li>
+<li>Values are your brand (this is true for Artsy Engineering, but our <a href="https://github.com/artsy">contributions</a> to the software industry are also a significant part of brand).</li>
+</ul>
+
+
+<p>I think each of these reasons applies to defining guiding principles as well. Over the past four years, I've seen the Artsy Engineering team encounter situations related to the reasons outlined above and, while the company values have helped us navigate disagreement, they haven't been entirely satisfactory.</p>
+
+<p>The two biggest shortcomings of the values have been an <strong>inconsistent practice</strong> and a <strong>difficulty making team-based decisions</strong>.</p>
+
+<p>Artsy Engineering supports the business primarily through product teams, which each have their own responsibilities and KPIs. Over time, different teams have developed their own subculture. In earnest, I think this is really cool, but it <em>has</em> eventually led to two teams taking radically different approaches to similar problems, or even repeating work that another team is already working on.</p>
+
+<p>That missing consistency also led to difficulties making team-based decisions: how can teams make decisions <em>as a team</em> without having a clear set of guidelines with which to evaluate a decision? As I'll explain in the next section, the Artsy company values often left us without a clear answer.</p>
+
+<a name="What.Makes.Guiding.Principles.Different.from.Company.Values."></a>
+<h2>What Makes Guiding Principles Different from Company Values?</h2>
+
+<p>Artsy's <a href="https://github.com/artsy/README/blob/master/culture/what-is-artsy.md#artsy-values">five core values</a> are as follows:</p>
+
+<ul>
+<li>Art meets Science</li>
+<li>People are Paramount</li>
+<li>Quality Worthy of Art</li>
+<li>Positive Energy</li>
+<li>Openness</li>
+</ul>
+
+
+<p>Those have been an incredibly useful framework for guiding Artsy's growth, for three years now. They're good values. But they are <em>very</em> general, designed specifically to be inclusive of every member of, and every team in, our company.</p>
+
+<p>That can lead to challenges when applying the values to specific teams, including engineering. In our day-to-day work, the values can help guide our general actions (being positive in pull request reviews, for example), but lack the specifics necessary to drive decision-making on a team level. The values also sometimes conflict with one another, and navigating those conflicts is difficult without a set of down-to-Earth guiding principles.</p>
+
+<p>Let's take a look at an example. "Quality Worthy of Art" is a really great value – personally, it motivates me to build software that would be worthy of hanging in a studio or gallery. However, the process of <em>getting</em> to that quality is often very messy; we might try one approach, switch to another, ship with <code>TODO</code> comments left in, etc. Real artists ship, after all. When <a href="http://artsy.github.io/series/open-source-by-default/">developing software in the open</a>, which value wins? The openness value, or the quality value?</p>
+
+<p>Our CEO has encouraged the company to lean into these tensions and use them to grow and learn together, which was a motivating factor in defining our guiding principles.</p>
+
+<a name="How.to.Define.Guiding.Principles."></a>
+<h2>How to Define Guiding Principles?</h2>
+
+<p>This is a very tricky question, since so much of the answer for Artsy Engineering is specific to us at Artsy (your process will necessarily be different) and specific to our team <em>within</em> Artsy (engineers make up less than 15% of Artsy's employee headcount). Orta helped define the values by looking at <a href="https://www.objc.io/issues/22-scale/artsy/">artefact's of our mobile team's culture</a> (since our mobile team <em>did</em> have a strong culture) and by talking to engineers privately to ask them for input. That was only half the work, though.</p>
+
+<p>Orta opened <a href="https://github.com/artsy/meta/pull/41">the pull request</a> with the guiding principles that he had synthesized from past documentation and from conversations with engineers, but explicitly marked the PR as a work-in-progress. The values he had were a good starting point, but we iterated extensively on them. We also added many more that had been missed by Orta's starting work (we had to start somewhere, after all). The whole process took about two weeks, and I learned a lot about how other engineers work at Artsy.</p>
+
+<p>Most of my experience at Artsy has been engineering front-end systems, and through the process of defining these principles, I learned a lot about how our back-end engineers work. We don't always work in the same way (remember, tensions?) but I value those differences; we have so much to learn from each other! Now with the guidelines, I'll be able to appreciate the back-end perspective.</p>
+
+<hr />
+
+<p>So with all that said, what are the Artsy Engineering Guiding Principles? You can read the <a href="https://github.com/artsy/README/blob/master/culture/engineering-principles.md">current principles here</a> (they are a living set of guidelines), but the principles we decided on are:</p>
+
+<ul>
+<li>Open Source by Default</li>
+<li>Own Your Dependencies</li>
+<li>Incremental Revolution</li>
+<li>Being Nice is Nice</li>
+<li>Minimum Viable Process</li>
+<li>Leverage Your Impact</li>
+<li>De-silo Engineers</li>
+<li>Build for 10x</li>
+<li>Done Means Done</li>
+</ul>
+
+
+<p>I encourage you to read the document for explanations of what each of these mean.</p>
+
+<p>Day-to-day, I don't expect <em>that</em> much to change now that we have these defined. But the differences they make will be key to the longevity and growth of our engineering team's culture.</p>
+
+<p>Remember that earlier example of openness-vs-quality? That is answered explicitly by the principles. The principles are <em>actionable</em>, they are <em>specific</em>, and they are <em>ours</em>.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[What it Feels Like to Work in a Supportive Environment for Female Engineers]]></title>
+    <link href="http://artsy.github.io/blog/2017/09/29/supportive-environment-for-female-engineers/"/>
+    <updated>2017-09-29T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2017/09/29/supportive-environment-for-female-engineers</id>
+    <content type="html"><![CDATA[<p>With the often overwhelming and downright discouraging reality that the tech industry isn’t a diverse and inclusive environment, I felt compelled to share what a productive, empathetic, and nurturing environment for female and female-identifying engineers looks like.</p>
+
+<p>I have just shipped a post over on the Life at Artsy blog about how: Our culture of empathy, our hiring process and our company values provide a competitive advantage. This all contributes to ensuring that all engineers regardless of gender feel valued.</p>
+
+<p><a href="https://medium.com/artsy-blog/what-it-feels-like-to-work-in-a-supportive-environment-for-female-engineers-3c994a001007">Read on at the Life at Artsy Blog →</a></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[DevSwap: An Experiment in Randomizing Teams]]></title>
+    <link href="http://artsy.github.io/blog/2017/09/11/DevSwap/"/>
+    <updated>2017-09-11T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2017/09/11/DevSwap</id>
+    <content type="html"><![CDATA[<p>A few weeks ago, every engineer at Artsy went to work for a different team for two full days. We called it DevSwap. In this post, I'll go over why and how we did it.</p>
+
+<!-- more -->
+
+
+<p>If you’ve read about Artsy's <a href="http://artsy.github.io/blog/2016/03/28/artsy-engineering-organization-stack/">Engineering Team</a> before, you might know that we organize ourselves into product teams that serve different parts of our business. Today, Artsy employs 26 engineers, spread across four product teams — Publishing, Auctions, Collector GMV, and Partner Success. We also have a Platform team that is responsible for systems, infrastructure, and data, among other things. Across these teams, we share systems and apps. To stay cohesive with one another, we also have what we call “practices,” which are cross-team groups that meet and discuss shared tech.</p>
+
+<p>Around two years ago, we didn't have product teams. Back then, most engineers worked in a variety of stacks. As our business models changed, so did the way we organized ourselves. Interestingly, the number of engineers has not changed drastically, but the way we work has. We have greater focus now that we are organized into product teams with specific business goals, but that means there aren't as many opportunities to work in other stacks.</p>
+
+<p>Earlier this summer, the engineering leads received some feedback from our engineers about wanting more cross-team collaboration and knowledge sharing. In our weekly engineering-wide meeting, we get to hear what features each team is working on, but it can sometimes feel like there's missing context. Within our practices, there is a better sense of the details, but usually the work itself is deeply nested in another team.</p>
+
+<p>We brainstormed several ideas related to knowledge sharing and cross-team collaboration. What stood out the most was that being in product teams meant fewer opportunities to work in other parts of the business. This led to the question: What would happen if we redistributed ourselves into entirely new teams?</p>
+
+<a name="Setup"></a>
+<h2>Setup</h2>
+
+<p>Over the course of a few weeks, the engineer leads devised a plan for DevSwap. Here are some questions we asked ourselves:</p>
+
+<ul>
+<li>How can we become closer as a team while learning something new?</li>
+<li>How can we keep ourselves as engineers nimble, flexible, and full-stack?</li>
+<li>How can we reduce risk in our systems by spreading knowledge?</li>
+<li>How can we have fun before summer is over?</li>
+</ul>
+
+
+<p>For the first iteration, we decided to spend two full business days swapping. Every engineer  worked with a different team. Each team contained the same number of people as the original team. The leads of each team stayed to onboard, provide support and facilitate work.</p>
+
+<p>The Monday before DevSwap, we had an engineering-wide meeting to go over some guidelines and pick teams. Here are the guidelines we shared:</p>
+
+<ul>
+<li>DevSwap will last 2 days. 🕑</li>
+<li>Product managers have been notified so don't worry about your regular work. Hopefully a new member will pick some up for you 😄.</li>
+<li>If possible, try and sit by your new team and if not, coordinate meeting times with remote members. 📞</li>
+<li>See this as a pairing opportunity! 👫</li>
+<li>In terms of work, it's business as usual. Your new lead will give you guidance. 💼</li>
+</ul>
+
+
+<p>In this meeting, we also had our leads "pitch" their teams. The goal of this was to get people excited about joining new teams and to get a sense of what projects they might work on. To choose the actual teams, each engineer picked their top three choices and we drew names out of a bucket. If their first choice was already full, we would place them in their next available choice. The following Monday and Tuesday, we were all writing code for different teams.</p>
+
+<a name="So.what.happened."></a>
+<h2>So what happened?</h2>
+
+<p>Our EU engineers kicked off DevSwap on Monday, tackling both the struggle of learning new stacks and being remote (our headquarters is located in NYC). Leads mitigated the latter problem by prepping EU folks on Friday so they had some direction come Monday morning.</p>
+
+<p>There was lots of Slack-ing, Screenhero-ing, and pairing. It was wonderful to see people interact in a new environment with new goals, even if it was temporary. Some got to learn about <em>how</em> teams operate and learned about issue prioritization and even attended meetings with stakeholders.</p>
+
+<p>Some people worked on modernizing codebases with projects like <a href="https://github.com/artsy/positron/pull/1225">server-side hot file swapping</a> and the introduction of a GraphQL endpoint to our consignments app. Others worked on building features like <a href="https://github.com/artsy/aprb/pull/104/files">setting up Slack notifications</a> when we receive customer feedback and adding ElasticSearch indexing to projects. We learned new languages <a href="https://github.com/artsy/eigen/pull/2412">by building features</a> and updated <a href="https://github.com/artsy/metaphysics/pull/702">many</a> <a href="https://github.com/artsy/positron/pull/1235">docs</a>.</p>
+
+<p>All work aside, the fact that we were having conversations with each other about the details of the technology while gaining a fresh perspective of someone else's experience was valuable.</p>
+
+<a name="Feedback.from.Engineers"></a>
+<h2>Feedback from Engineers</h2>
+
+<p>I learned a lot and had fun, but I wondered what everyone else thought. At the end of the second day, I sent out a survey to all 26 engineers and received 14 responses. Here are some of those results:</p>
+
+<p>Did you get a chance to collaborate with someone you don't normally work with?</p>
+
+<iframe width="600" height="371" seamless frameborder="0" scrolling="no" src="https://docs.google.com/spreadsheets/d/e/2PACX-1vQoAQpvGiq2-5EJWz__vS0n4Iw9r3rY_eSEaPqKQzUlPnObnono-RFS4qLSjrmGTqGnbMOoQsA1L9WX/pubchart?oid=942845256&amp;format=interactive"></iframe>
+
+
+<p><br>
+Did you gain a better understanding of a piece of Artsy Engineering you don't normally interact with?</p>
+
+<iframe width="600" height="371" seamless frameborder="0" scrolling="no" src="https://docs.google.com/spreadsheets/d/e/2PACX-1vQoAQpvGiq2-5EJWz__vS0n4Iw9r3rY_eSEaPqKQzUlPnObnono-RFS4qLSjrmGTqGnbMOoQsA1L9WX/pubchart?oid=543941925&amp;format=interactive"></iframe>
+
+
+<p><br>
+If we were to swap again in 6 months, how long should it last?</p>
+
+<iframe width="600" height="371" seamless frameborder="0" scrolling="no" src="https://docs.google.com/spreadsheets/d/e/2PACX-1vQoAQpvGiq2-5EJWz__vS0n4Iw9r3rY_eSEaPqKQzUlPnObnono-RFS4qLSjrmGTqGnbMOoQsA1L9WX/pubchart?oid=1071239654&amp;format=interactive"></iframe>
+
+
+<p><br>
+<br></p>
+
+<blockquote><p>"Would make the swap slightly longer -- was a short timeframe to get through a project."</p>
+
+<p>"Onboarding took up most of the time. It was hard to get anything beyond that done."</p></blockquote>
+
+<p>One clear piece of feedback was the desire to spend more time on an assigned team. Some engineers had trouble onboarding, setting up projects, and accomplishing meaningful work within the two days. If engineers can't spin up a dev environment within a day, what does that mean for usability? These are solvable problems — we could think about dockerizing apps or having better READMEs. During the session, some folks went back to their old teams to help new members with problems. While this was great, it meant less time for their own learning. One option is to extend the duration of the swap. But by extending it too long, it could remove the hackathon mentality that kept people highly focused. It seems like a combination of tweaking the duration, providing better initial setup, and clearly communicating expectations might help for next time.</p>
+
+<p>We also requested feedback on the leads. Responding to a multiple choice question about what their newly assigned lead did best, most engineers chose "Assisted me when I got stuck" and "Checked in with me frequently." The least chosen answers were "Taught me something new" and "Made the work enjoyable." It's possible that taking more time to prepare for new teams (i.e. introduction meetings, dev environment setup workshop) could provide more opportunities for deeper learning.</p>
+
+<p>When we asked if there were any good takeaways that could be applied to your own team, we had some interesting answers.</p>
+
+<blockquote><p>"Partner Success does a 'show &amp; tell' where you just casually mention something you learned, dev/tech related. That was fun. We should do that on [Collector Experience]."</p>
+
+<p>"Finally got to play with Redux in a production app, which I'd be very happy to see implemented in <a href="https://github.com/artsy/positron">Positron</a>."</p>
+
+<p>"I've been thinking a lot about GraphQL and what it could mean to the [Partner Success] team. Also thinking about what it means for Kinetic and how our projects talk to Gravity."</p></blockquote>
+
+<p>Finally, what did people like most?</p>
+
+<blockquote><p>"Working with people that I normally don't get a chance to work with on daily basis and also working on the areas of our systems. The fact that now each engineer knows how to setup and run another part of our system by itself is a huge win."</p>
+
+<p>"The tight time period forces projects to be very granular. It also forces repo set-up time to be minimized (e.g., via setup/bootstrap scripts, docker, etc.)."</p>
+
+<p>"I liked feeling like I was able to figure out a codebase that was completely new to me and add value even in the short time that we had to work with. It made me feel like something intimidating was actually within my reach and that made me feel smart. :)"</p>
+
+<p>"I wasn't sure if we should expect to get much accomplished but was pleasantly surprised to ship a small but useful feature."</p>
+
+<p>"Awesome idea, it feels great to be part of the team that takes risks like this to increase teamwork and knowledge share among engineers and give engineers chance to get out of their comfort zone."</p></blockquote>
+
+<p>Despite a few issues with onboarding and timing, it seems that most people found DevSwap to be valuable. This feedback gives us a lot to consider when planning the next one. We hope to bring it back soon!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Being a Better Programmer When You're Actually Lazy.]]></title>
+    <link href="http://artsy.github.io/blog/2016/03/02/Lazily-Automation/"/>
+    <updated>2016-03-02T12:09:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2016/03/02/Lazily-Automation</id>
+    <content type="html"><![CDATA[<p>I juggle a bunch of projects, both in Artsy and in the Open Source community. If you don't work with me directly, you'd be mistaken for believing that I was an organized person. I'm pretty far from that, and <a href="https://github.com/artsy/mobile/issues/68">don't really</a> plan on changing that.</p>
+
+<p>However, I work with other people and very strongly believe that programming is mostly a social problem once you're good enough at writing code. It'd be hypocritical of me to not improve the people process side, so I try to automate processes that makes me a better team-mate.</p>
+
+<p>I'm going to cover four things I've worked on lately to improve this: <a href="https://github.com/danger/danger/">Danger</a>, <a href="https://github.com/orta/github-clippers">GitHub-Clippers</a> and improving how I write commits and prefixing my name on branches.</p>
+
+<!-- more -->
+
+
+<a name="Danger"></a>
+<h3>Danger</h3>
+
+<p><a href="https://github.com/danger/danger/">Danger</a> is a tool I co-created with a friend (<a href="https://github.com/krausefx/">Felix Krause</a>), and it's namesake, <a href="https://github.com/dangermcshane">Gem "Danger" McShane</a>. It came out of frustration that we couldn't easily hold ourselves accountable to better team processes. Requiring a code-reviewer to  also remember details like "Add a CHANGELOG Entry" isn't much to ask, but it is "Yet Another Thing To Remember" for both the submitter and reviewer.</p>
+
+<p>It's turning into a really important part of our code-review, and the ideas it generates once we had it in place make it fun to add new rules. It means we can fail fast, and not have to think about process so much. Danger will tell us if we've missed something.</p>
+
+<p><img src="/images/2016-03-02-Lazily-Automation/danger.png" alt="Danger Example" /></p>
+
+<p>I expect to write a more serious post on <a href="https://github.com/danger/danger/">Danger</a> once it's more fleshed out. For now though, the README covers what it does well.</p>
+
+<a name="Clippers"></a>
+<h3>Clippers</h3>
+
+<p>In every big team I operate in, other people care about keeping the repo clean of merged branches. I totally respect their opinion, but it's so low on things I care about that I just don't register the "Delete Branch" button on a GitHub pull request. I'd rather be finding a <a href="https://github.com/orta/gifs">good response GIF</a>.</p>
+
+<p>So I created <a href="https://github.com/orta/github-clippers">a Safari Extension</a> that handles automatically deleting branches on specific repos for me. It's not a biggie, it's not fancy, it's under a <a href="https://github.com/orta/github-clippers/blob/master/GitHub-Clippers.safariextension/github_clippers.js">hundred lines of code</a> - but it automates something that annoyed others about my behavior. That counts for something.</p>
+
+<a name="Commit.Automation"></a>
+<h3>Commit Automation</h3>
+
+<p>I write <em>reasonable</em> commit messages, they're not <a href="http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html">amazing</a>, they're <a href="http://www.whatthecommit.com">not terrible</a>. They're just, <a href="https://github.com/artsy/energy/commits/master?author=orta">alright</a>. I wanted to start trying to hold everyone accountable for doing better, so I advocated for copying the person with the <a href="https://github.com/artsy/eigen/commits/master?author=alloy">best commit style</a> on our team.</p>
+
+<p>Their style is to have commits in a format like <code>[Context] Thing I did.</code> - it is much better that <code>Thing I did.</code>. So I looked into how I could automate this, because I would very quickly forget to do this. Here's what I did:</p>
+
+<pre><code class="sh">
+// Helper function to get the branch info
+function git_branch_info() {
+  ref=$(command git symbolic-ref HEAD 2&gt; /dev/null) || \
+  ref=$(command git rev-parse --short HEAD 2&gt; /dev/null) || return
+  echo "${ref#refs/heads/}"
+}
+
+function branch() {
+  git checkout master;
+  git pull upstream master;
+  git checkout -b $1
+  git config branch.$1.description $2
+}
+
+function commit() {
+  local BRANCH=$(git_branch_info)
+  local INFO=$(git config branch.$(echo $BRANCH).description)
+  git commit -m "[$(echo $INFO)] $argv"
+}
+
+// And if I forget to set my context
+function context() {
+  local BRANCH=$(git_branch_info)
+  git config branch.$(echo $BRANCH).description $1
+}
+</code></pre>
+
+<p>Or if you're a fish user like me, <a href="https://gist.github.com/orta/902d8e576a2b75afe2df">this gist</a>.</p>
+
+<p>I created two shell functions, one that makes a branch that includes a context type. So for example, say I'm working on artwork notifications, I'd start a new branch with <code>$ branch artwork_notifications Notifications</code>. This saves the context as <code>Notifications</code> on the git branch metadata. Then everytime I want to commit my changes, I use <code>$ commit This is the thing I changed.</code> - and it will be prefixed with <code>[Notifications]</code>. It makes it easier for someone looking through the history to have an idea about the context, and makes me feel like I'm improving my process without remembering the context.</p>
+
+<a name="Branch.Prefixes"></a>
+<h3>Branch Prefixes</h3>
+
+<p>We use a Makefile in all our projects to try and help automate per-project simple tasks like running <a href="https://github.com/artsy/energy/blob/e5db035225490fb53c65c74a6c1bdd660f305ab6/Makefile#L44">mogenerator</a>, updating <a href="https://github.com/artsy/energy/blob/e5db035225490fb53c65c74a6c1bdd660f305ab6/Makefile#L49">storyboard identifiers</a> and updating <a href="https://github.com/artsy/eigen/blob/12fe9de4d927eea27f4942d15e74b89016a6345f/Makefile#L102-L103">embedded resources</a>.</p>
+
+<p>I also applied some standard make commands in our projects so that I can prefix my <a href="https://github.com/artsy/eigen/blob/10106210196f096a27412a70af61dcae7fda285c/Makefile#L110-L117">branches with my name</a>.</p>
+
+<pre><code class="sh">LOCAL_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
+BRANCH = $(shell echo host=github.com | git credential fill | sed -E 'N; s/.*username=(.+)\n?.*/\1/')-$(shell git rev-parse --abbrev-ref HEAD)
+
+pr:
+    if [ "$(LOCAL_BRANCH)" == "master" ]; then echo "In master, not PRing"; else git push upstream "$(LOCAL_BRANCH):$(BRANCH)"; open "https://github.com/artsy/eigen/pull/new/artsy:master...$(BRANCH)"; fi
+
+push:
+    if [ "$(LOCAL_BRANCH)" == "master" ]; then echo "In master, not pushing"; else git push upstream $(LOCAL_BRANCH):$(BRANCH); fi
+
+fpush:
+    if [ "$(LOCAL_BRANCH)" == "master" ]; then echo "In master, not pushing"; else git push upstream $(LOCAL_BRANCH):$(BRANCH) --force; fi
+</code></pre>
+
+<p>This works by some funky shell work to pull out your current branch into <code>LOCAL_BRANCH</code>, then to do the same thing but prefixed with your login name for <code>BRANCH</code>. Then the make commands handle pushing to the server. This means that everyone in the team can provide have logically named branches without having to have their local repo filled with <code>[my_name]-thing</code> branches.</p>
+
+<a name="On-going"></a>
+<h2>On-going</h2>
+
+<p>This is a work in progress, as the mobile team grows, we need to add more process when it's appropriate. This <em>doesn't</em> mean that we have to sacrifice speed, and we can continue thinking about the problem at hand rather than devoting energy to process.</p>
+
+<p>It's a time trade-off that has worked out well for me so far, and I'd love to know other people's hacks for having useful process, but automating it so that it's not considered overhead.</p>
+]]></content>
+  </entry>
+  
+</feed>

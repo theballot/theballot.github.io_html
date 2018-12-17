@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: testing | Artsy Engineering]]></title>
+  <link href="http://artsy.github.io/blog/categories/testing/atom.xml" rel="self"/>
+  <link href="http://artsy.github.io/"/>
+  <updated>2018-12-16T10:16:31+00:00</updated>
+  <id>http://artsy.github.io/</id>
+  <author>
+    <name><![CDATA[]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Switch from Capybara Webkit to Chrome]]></title>
+    <link href="http://artsy.github.io/blog/2018/11/27/switch-from-capybara-webkit-to-chrome/"/>
+    <updated>2018-11-27T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/11/27/switch-from-capybara-webkit-to-chrome</id>
+    <content type="html"><![CDATA[<p>Volt is the internal app name of Artsy CMS, and our partners use it to manage their inventory and presence on artsy.net. It's a Rails-based UI app that talks to many API services. We use <a href="https://github.com/rspec/rspec">RSpec</a> extensively to cover controller, model, view, and feature specs. As of Jun. 2018, Volt had 3751 specs and 495 of them were run with JavaScript enabled. It took about 16 mins to run on CircleCI with 6x parallelism.</p>
+
+<p>Capybara-webkit was introduced from the very beginning of Volt for testing JavaScript-enabled specs via headless WebKit browser. It's been providing a lot of confidence for the past 4+ years; however, a few reasons/growing concerns have encouraged us to look for (more modern) alternatives:</p>
+
+<!-- more -->
+
+
+<a name="The.Problem"></a>
+<h2>The Problem</h2>
+
+<ul>
+<li>The <a href="https://github.com/thoughtbot/capybara-webkit/tree/v1.14.0#qt-dependency-and-installation-issues">dependency of specific versions of Qt</a> has been causing frustrations to set it up properly both on engineers' local machines and on CI.</li>
+<li>The roadmap of capybara-webkit development is <a href="https://github.com/thoughtbot/capybara-webkit/issues/885#issuecomment-193988527">unclear</a>.</li>
+<li>It's been hard to truly identify the root cause of "flickering" feature specs (i.e. tests that fail intermittently and are hard to reliably reproduce), while retrying tended to resolve it on CI.</li>
+<li>The entire RSpec tests took about 16 mins to complete on CI, with 6 parallelism. The slowness made it unrealistic to run the whole tests locally.</li>
+</ul>
+
+
+<a name="The.Goal"></a>
+<h2>The Goal</h2>
+
+<p>Headless Chrome has gained a lot of attention in the past years and migrations done by companies such as <a href="https://about.gitlab.com/2017/12/19/moving-to-headless-chrome/">GitLab</a> and <a href="https://robots.thoughtbot.com/headless-feature-specs-with-chrome">thoughtbot</a> have proved it to be a promising alternative to capybara-webkit. In fact, it's been <a href="http://guides.rubyonrails.org/5_1_release_notes.html#system-tests">officially included in Rails 5.1</a> for <a href="https://guides.rubyonrails.org/testing.html#system-testing">system tests</a>.</p>
+
+<p>The goal of this project is to switch to Headless Chrome and maintain the same feature sets we have now. This includes:</p>
+
+<ul>
+<li>Making all existing specs pass</li>
+<li>Running in container environments and using Artsy <a href="https://github.com/artsy/hokusai">Hokusai</a></li>
+<li>Supporting mechanisms to debug specs, e.g. examining browser console logs for JavaScript behavior, taking screenshots on demand and automatically on failure, etc.</li>
+<li>Bonus point to improve the stability of feature specs</li>
+<li>Bonus point to improve the speed of running the entire test suite</li>
+</ul>
+
+
+<a name="The.How"></a>
+<h2>The How</h2>
+
+<p>First, we replaced <code>capybara-webkit</code> with <code>selenium-webdriver</code> and <code>chromedriver-helper</code>:</p>
+
+<pre><code class="ruby">gem 'selenium-webdriver'
+gem 'chromedriver-helper'
+</code></pre>
+
+<p><a href="https://github.com/flavorjones/chromedriver-helper"><code>chromedriver-helper</code></a> was useful to help install <a href="https://sites.google.com/a/chromium.org/chromedriver/">chromedriver</a> in different environments, e.g. an engineer's local machine, CI, etc.</p>
+
+<p>Second, we registered both <code>:chrome</code> and <code>:headleass_chrome</code> drivers. By default, it used Headless Chrome as the JavaScript driver, and we could easily switch to Chrome and observe the actual interaction happening in a real browser.</p>
+
+<pre><code class="ruby">Capybara.register_driver :chrome do |app|
+  Capybara::Selenium::Driver.new(app, browser: :chrome)
+end
+
+Capybara.register_driver :headless_chrome do |app|
+  caps = Selenium::WebDriver::Remote::Capabilities.chrome(loggingPrefs: { browser: 'ALL' })
+  opts = Selenium::WebDriver::Chrome::Options.new
+
+  chrome_args = %w[--headless --window-size=1920,1080 --no-sandbox --disable-dev-shm-usage]
+  chrome_args.each { |arg| opts.add_argument(arg) }
+  Capybara::Selenium::Driver.new(app, browser: :chrome, options: opts, desired_capabilities: caps)
+end
+
+Capybara.configure do |config|
+  # change this to :chrome to observe tests in a real browser
+  config.javascript_driver = :headless_chrome
+end
+</code></pre>
+
+<p>We were on Rails v5.0.2 and Capybara v2.18.0 during the migration. We will be able to simplify the configuration by using the default <code>:selenium_chrome</code> and <code>:selenium_chrome_headless</code> drivers introduced in <a href="https://github.com/teamcapybara/capybara/blob/3.11.1/lib/capybara.rb#L535-L545">Capybara v3.11.1</a>. In addition, Rails v5.1 introduced the new system tests, and it'll be even simpler by using the <a href="https://api.rubyonrails.org/v5.1.3/classes/ActionDispatch/SystemTestCase.html#method-c-driven_by"><code>driven_by</code></a> method.</p>
+
+<a name="Lessons.Learned"></a>
+<h2>Lessons Learned</h2>
+
+<p>Naively switching to Headless Chrome caused about 60 spec failures on my local machine. We simply went through them one by one and fixed them. A big part of failures was due to <a href="https://github.com/thoughtbot/capybara-webkit/tree/v1.14.0#non-standard-driver-methods">capybara-webkit's non-standard driver methods</a>, such as setting cookies, inspecting console logs, etc., and we just had to migrate to Selenium WebDriver's equivalents.</p>
+
+<p>However, we still observed flickering specs on CI, while the exact failures seemed to be different than previously observed with Capybara Webkit. We will have to investigate farther for possible causes. Regarding speed, we didn't see significant improvement after switching to Headless Chrome, as mentioned in GitLab's and others' blog post, too.</p>
+
+<a name="Next.Steps"></a>
+<h2>Next Steps</h2>
+
+<p>The naive migration to Chrome (and removal of the Qt dependency) already improved the developer experience quite a lot (e.g. no more wrestling with installing Capybara Webkit and Qt 5.5 on every engineer's local machine <em>and</em> CI.) There are many next steps we can keep experimenting with and improving our tests, for example</p>
+
+<ul>
+<li>Updating Volt to Rails >= 5.1 and switching to system tests</li>
+<li>Investigating the causes of the flickering specs by looking into intermittent failures reported on CI</li>
+<li>Improving speed by using Docker <a href="https://docs.docker.com/develop/develop-images/multistage-build/">multi-stage builds</a>, caching, writing the right type and amount of tests, etc.</li>
+</ul>
+
+
+<p>It's a long journey, and we were all excited about the migration and the new future. We'd love to hear your experience, too!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[How To Debug Jest Tests]]></title>
+    <link href="http://artsy.github.io/blog/2018/08/24/How-to-debug-jest-tests/"/>
+    <updated>2018-08-24T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/08/24/How-to-debug-jest-tests</id>
+    <content type="html"><![CDATA[<p>Hey there! My name is Anson and I work on the Platform team at Artsy. Recently, we faced an issue where a certain <a href="https://github.com/airbnb/enzyme">Enzyme</a> test we wrote using mock tracking was failing, but we couldn't figure out why. Luckily, with some help from <a href="/author/orta">Orta</a> and some clever thinking, we figured out what was going on.</p>
+
+<!-- more -->
+
+
+<p>We thought it was an issue with the mock testing library we had written. We tried to fix the problem by sprinkling <code>console.log</code> calls throughout the test, but it was still hard to figure out what was going on, especially without knowing how to peek into the properties of certain objects.</p>
+
+<p>Instead, <a href="/author/orta">Orta</a> suggested we used the Chrome Node DevTools. Since the Enzyme test is run via <code>yarn jest</code>, yarn is acting as a frontend for running the Enzyme test with Node. This means that we can use the Chrome Node DevTools as a debugger to run the Enzyme test. This was super useful since the one thing we needed was to be able to peek inside certain objects to see what they looked like and how they were failing. It was a much faster, more methodical way to approach debugging this test. Here are the steps we took:</p>
+
+<ul>
+<li>First, insert a new line in your test where you think it might be failing and type <code>debugger</code>. This will serve as a break point for the debugger to stop at.</li>
+<li>Open up Chrome and type in the address bar : <code>chrome://inspect</code></li>
+<li>Click on "Open dedicated DevTools for Node"</li>
+<li>In your terminal, instead of typing <code>yarn jest &lt;path_to_test&gt;</code>, type this:</li>
+</ul>
+
+
+<pre><code class="bash">node --inspect node_modules/.bin/jest --runInBand &lt;path_to_test&gt;
+</code></pre>
+
+<p>Or you can add it to your <code>package.json</code> as a script:</p>
+
+<pre><code class="diff">  {
+    "scripts" : {
++    "test:debug": "node --inspect node_modules/.bin/jest --runInBand",
+    }
+  }
+</code></pre>
+
+<p>Which you can then run as <code>yarn test:debug &lt;path_to_test&gt;</code>.</p>
+
+<p>Voila! Your test should now be running in the Chrome debugger. And you get your handy console to poke around all sorts of stuff!</p>
+
+<p>You also have the option of using this with Jest's <code>--watch</code> mode in order easily re-run tests, after changes to app or test code.</p>
+
+<pre><code class="bash">node --inspect node_modules/.bin/jest --watch --runInBand &lt;path_to_test&gt;
+</code></pre>
+
+<p>Now simply hit Enter in the terminal running your Jest process anytime you want to re-run your currently selected specs. You'll be dropped right back into the Chrome debugger.</p>
+
+<p>You might be wondering how this fixed our tests. Well, turns out that we missed a <code>jest.unmock()</code> call at the top of the test file. <em>Facepalm.</em> To prevent this from biting other developers in the future, <a href="/author/orta">Orta</a> whipped up a <a href="https://github.com/artsy/reaction/pull/1174">pull request</a> to add a rule in our TypeScript linter, check it out!</p>
+
+<p>Either way, in the future, this will probably be my first step in debugging non-obvious issues in tests, if only to eliminate possible sources of the issues. I'm glad I was able to learn with <a href="/author/orta">Orta</a> about a methodical way to debug test failures. Hope this helps, and happy hacking!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Splitting up a large test suite]]></title>
+    <link href="http://artsy.github.io/blog/2015/09/24/splitting-up-a-large-test-suite/"/>
+    <updated>2015-09-24T22:13:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2015/09/24/splitting-up-a-large-test-suite</id>
+    <content type="html"><![CDATA[<p>A while back, we wrote about <a href="/blog/2012/10/09/how-to-run-rspec-test-suites-in-parallel-with-jenkins-ci-build-flow/">How to Run RSpec Test Suites in Parallel with Jenkins CI Build Flow</a>. A version of that still handles our largest test suite, but over time the initial division of specs became unbalanced. We ended up with some tasks that took twice as long as others. Even worse, in an attempt to rebalance task times, we ended up with awkward file patterns like <code>'spec/api/**/[a-m]*_spec.rb'</code>.</p>
+
+<p>To keep our parallel spec tasks approximately equal in size and to support arbitrary concurrency, we've added a new <code>spec:sliced</code> task:</p>
+
+<!-- more -->
+
+
+<pre><code class="ruby">namespace :spec do
+  task :set_up_spec_files do
+    spec_files = Dir['spec/**/*_spec.rb']
+    @spec_file_digests = Hash[spec_files.map { |f| [f, Zlib.crc32(f)] }]
+  end
+
+  RSpec::Core::RakeTask.new(:sliced, [:index, :concurrency] =&gt; :set_up_spec_files) do |t, args|
+    index = args[:index].to_i
+    concurrency = args[:concurrency].to_i
+    t.pattern = @spec_file_digests.select { |f, d| d % concurrency == index }.keys
+  end
+end
+</code></pre>
+
+<p>As you can see, the <code>set_up_spec_files</code> helper task builds a hash of spec file paths and corresponding checksums. When we invoke the <code>sliced</code> task with <code>index</code> and <code>concurrency</code> values (e.g., <code>0</code> and <code>5</code>), only the spec files with checksums equal to <code>0</code> when mod-ed by <code>5</code> are run. Thus, the Jenkins build flow would look like:</p>
+
+<pre><code class="java">parallel (
+  {build("master-ci-task", tasks: "spec:sliced[0,5]")},
+  {build("master-ci-task", tasks: "spec:sliced[1,5]")},
+  {build("master-ci-task", tasks: "spec:sliced[2,5]")},
+  {build("master-ci-task", tasks: "spec:sliced[3,5]")},
+  {build("master-ci-task", tasks: "spec:sliced[4,5]")}
+)
+build("master-ci-succeeded")
+</code></pre>
+
+<p>Now, spec times <em>might</em> continue to be unbalanced despite files being split up approximately evenly. (For a more thorough approach based on recording spec times, see <a href="https://github.com/ArturT/knapsack">knapsack</a>.) However, this little bit of randomness was a big improvement over our previous approach, and promises to scale in a uniform manner.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Releasecop Tracks Stale Releases]]></title>
+    <link href="http://artsy.github.io/blog/2015/09/01/releasecop-tracks-stale-releases/"/>
+    <updated>2015-09-01T17:30:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2015/09/01/releasecop-tracks-stale-releases</id>
+    <content type="html"><![CDATA[<p>Artsy practices a sort of <a href="http://en.wikipedia.org/wiki/Continuous_delivery">continuous delivery</a>. We keep release cycles short and the process of reviewing, testing, and deploying our software as reliable, fast, and automated as possible. (This blog has touched on these practices <a href="http://artsy.github.io/blog/categories/testing/">multiple</a> <a href="http://artsy.github.io/blog/categories/continuous-integration">times</a>.)</p>
+
+<p>Usually, commits that have been reviewed and merged are immediately built and tested. Successfully built versions of the codebase are often automatically deployed to a staging environment. On an automated or frequent-but-manual basis, that version is deployed to a production environment. Thus, commits form a pipeline:</p>
+
+<ul>
+<li>From developers' working branches</li>
+<li>To the master branch</li>
+<li>Through a hopefully-successful build</li>
+<li>To a staging environment</li>
+<li>To production</li>
+</ul>
+
+
+<p>The number of apps and services we deploy has grown to <em>dozens</em> per team, so sometimes things fall through the cracks. We've been using <a href="https://github.com/joeyAghion/releasecop">Releasecop</a> for the last few months to get gentle email reminders when an environment could use a deploy.</p>
+
+<!-- more -->
+
+
+<pre><code>gem install releasecop
+releasecop edit
+</code></pre>
+
+<p>This opens a <em>manifest</em> file where you can describe the sequence of git remotes and branches that make up your own release pipeline. For example:</p>
+
+<pre><code>{
+  "projects": {
+    "charge": [
+      { "name": "master", "git": "git@github.com:artsy/charge.git" },
+      { "name": "staging", "git": "git@heroku.com:charge-staging.git" },
+      { "name": "production", "git": "git@heroku.com:charge-production.git" }
+    ],
+    "gravity": [
+      { "name": "master", "git": "git@github.com:artsy/gravity.git" },
+      { "name": "master-succeeded", "git": "git@github.com:artsy/gravity.git", "branch": "master-succeeded" },
+      { "name": "staging", "git": "git@github.com:artsy/gravity.git", "branch": "staging" },
+      { "name": "production", "git": "git@github.com:artsy/gravity.git", "branch": "production" }
+    ]
+  }
+}
+</code></pre>
+
+<p>The <code>charge</code> app is a typical deployment to Heroku. Work progresses from the <code>master</code> branch to a <code>charge-staging</code> app to a <code>charge-production</code> app. The <code>gravity</code> app is a more complicated, non-Heroku deployment. It updates git branches to reflect what has been merged (<code>master</code>), tested (<code>master-succeeded</code>), deployed to staging, and deployed to production.</p>
+
+<p>Run the <code>releasecop check [app]</code> command to report the status of your apps' releases:</p>
+
+<pre><code>$ releasecop check --all
+charge...
+  staging is up-to-date with master
+  production is up-to-date with staging
+gravity...
+  master-succeeded is up-to-date with master
+  staging is up-to-date with master-succeeded
+  production is behind staging by:
+    06ca969 2015-09-04 [config] Replace Apple Push Notification certificates that expire today. (Eloy Durán)
+    171121f 2015-09-03 Admin-only API for cancelling a bid (Matthew Zikherman)
+    4c5feea 2015-09-02 install mongodb client in Docker so that import rake tasks can run (Barry Hoggard)
+    95347d1 2015-08-31 Update to delayed_job cookbook that works with Chef 11.10 (Joey Aghion)
+2 project(s) checked. 1 environment(s) out-of-date.
+</code></pre>
+
+<p>A nightly <a href="https://jenkins-ci.org/">Jenkins</a> job emails us the results, but a cron job could work equally well.</p>
+
+<p><a href="https://github.com/joeyAghion/releasecop">Releasecop</a> reminds us to deploy ready commits and close the loop on in-progress work. We hope you find it useful. (Pull requests are welcome!)</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[How To Write Unit Tests Like a Brood Parasite]]></title>
+    <link href="http://artsy.github.io/blog/2015/07/06/how-to-write-unit-tests-like-a-brood-parasite/"/>
+    <updated>2015-07-06T13:54:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2015/07/06/how-to-write-unit-tests-like-a-brood-parasite</id>
+    <content type="html"><![CDATA[<p>To a beginner, <a href="http://ocmock.org/">OCMock</a> looks scary. The syntax is strange, the idea of stubbing seems complicated, and skirting around the need to use it at all times kind of works out for a while.</p>
+
+<pre><code class="objc">[[[mock stub] // three brackets!!
+
+[OCMockObject niceMockForClass:UINavigationItem.class]; // it has to be told to be nice?
+</code></pre>
+
+<p>All of this can be overwhelming for someone who just wants to write simple unit tests for a particular view controller.</p>
+
+<p>Once you look into the specifics of OCMock, however, things get less terrifying really quickly. It is helpful to compare OCMock’s approach to stubbing to the <a href="https://vimeo.com/60553870">behaviors of certain bird species</a>. As always, the soothing voice of David Attenborough brings clarity and joy to even the most mundane puzzles of life’s journey.</p>
+
+<!-- more -->
+
+
+<hr />
+
+<p>For those who hate birds and videos of them, the cuckoo duck is known for leaving its eggs in the nests of other birds precisely as their unsuspecting victims lay their own. The new host parents cannot differentiate their offspring from those of the duck and inadvertently raise the duck chicks to maturity.</p>
+
+<p>In a similar fashion, OCMock can place trick objects in your <del>nest</del> test code with whichever custom configuration suits your needs. The ‘host’ subject under test can’t differentiate these mock objects from the objects they’ve been written to use, and you can decide exactly how you’d like the mock objects to behave in your testing environment. This was especially helpful for a method I created that relies on information from an asynchronous network request. We’ll call it the <code>DataSource</code> of a <code>StatusMonitor</code> class.</p>
+
+<pre><code class="objc">- (BOOL)updatedStatus
+{
+    [DataSource getNewDataWithNetworkRequest];
+    /// some code that relies on this new data
+}
+</code></pre>
+
+<p>In my view controller, I can use a <code>StatusMonitor</code> to decide whether or not a notification should appear in my view:</p>
+
+<pre><code class="objc">- (void)viewWillAppear
+{
+    [super viewWillAppear];
+
+/// show or hide a notification based on this status
+    BOOL shouldShowNotification = [self.statusMonitor updatedStatus];
+}
+</code></pre>
+
+<p>When I’m writing tests for this view controller, I don’t care about <code>DataSource</code> - I just want to make sure the view controller knows when to show or hide a notification correctly depending on the new value from its StatusMonitor. I’d really like to avoid making any network requests within these kinds of tests. This is where the bird strategy comes in.</p>
+
+<p>In my tests, I can create a decoy <code>StatusMonitor</code> with its corresponding methods using OCMock.</p>
+
+<pre><code class="objc">StatusMonitor *statusMonitor = [[ARCMSStatusMonitor alloc] init];
+id mockMonitor = [OCMockObject partialMockForObject:statusMonitor];
+
+[[[mockMonitor stub] andReturn:@YES] checkStatus];
+</code></pre>
+
+<hr />
+
+<p>I can then assign mockMonitor to the <code>statusMonitor</code> property of my view controller under test. In this way, the dependency on a network connection disappears, my view controller is happy, and my test can isolate the functionality I care about. OCMock provides some excellent documentation of what they mean by ‘nice’ and some other interesting things you can do with mock objects <a href="http://ocmock.org/features/">here</a>. For those interested in David Attenborough, birds, or natural history in general, I recommend  <a href="http://www.bbc.co.uk/nature/collections/p0048522">Nature</a>.</p>
+
+<div style="text-align:center;">
+<img src = "/images/2015-07-06-how-to-write-unit-tests-like-a-brood-parasite/attenborough.gif">
+</div>
+
+]]></content>
+  </entry>
+  
+</feed>

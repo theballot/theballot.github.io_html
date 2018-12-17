@@ -1,0 +1,697 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: node | Artsy Engineering]]></title>
+  <link href="http://artsy.github.io/blog/categories/node/atom.xml" rel="self"/>
+  <link href="http://artsy.github.io/"/>
+  <updated>2018-12-16T10:16:31+00:00</updated>
+  <id>http://artsy.github.io/</id>
+  <author>
+    <name><![CDATA[]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Keeping Artsy's dependencies up to date]]></title>
+    <link href="http://artsy.github.io/blog/2018/11/26/keeping-dependencies-updated/"/>
+    <updated>2018-11-26T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/11/26/keeping-dependencies-updated</id>
+    <content type="html"><![CDATA[<p>Hey everyone! I'm Justin, a senior engineer here at Artsy. I've been here for about 6 months and I'm a bit overdue
+on my first blog post. This will be one of a series of posts I'm dubbing <em>roads and bridges</em> (<a href="https://www.fordfoundation.org/about/library/reports-and-studies/roads-and-bridges-the-unseen-labor-behind-our-digital-infrastructure/">thanks Orta</a>)
+describing infrastructure and tooling work here at Artsy.</p>
+
+<a name="Backstory"></a>
+<h3>Backstory</h3>
+
+<p>Here at Artsy we have a lot of internal dependencies. Keeping these dependencies up to date across all of our
+projects can be a bit of a headache. For example, there's <a href="https://github.com/artsy/palette">Palette</a> (our <a href="https://www.uxpin.com/studio/blog/design-systems-vs-pattern-libraries-vs-style-guides-whats-difference/">design system</a>)
+which is consumed by <a href="https://github.com/artsy/reaction">Reaction</a> (our react component/app library), <a href="https://github.com/artsy/emission">Emission</a> (our React Native
+application), <a href="https://github.com/artsy/force">Force</a> (our main site), and <a href="https://github.com/artsy/positron">Positron</a> (our editorial creation tool). That's not
+even an exhaustive list. As you can imagine, after making an update to <a href="https://github.com/artsy/palette">Palette</a> we have to make a lot of
+Pull Requests to get everything synced up across our many projects. And that's just <em>one</em> dependency.</p>
+
+<!-- more -->
+
+
+<a name="Evaluating.the.problem"></a>
+<h3>Evaluating the problem</h3>
+
+<p>There are a few services out there that connect to GitHub and helps you keep your dependencies up to date. I'd
+personally used <a href="https://greenkeeper.io/">Greenkeeper</a> in the past and it seemed to work fairly well for my uses. I'd also
+heard about <a href="https://renovatebot.com/">Renovate</a> which is another option that actually supports more package managers than just
+yarn/npm. Great! Plenty to evaluate here. Anytime I'm evaluating a new service there are a few questions I ask
+myself upfront to help a good decision:</p>
+
+<ol>
+<li>What are my exact needs</li>
+<li>Can this solution scale to meet future needs</li>
+</ol>
+
+
+<p>The first point is straight-forward, but there's a little twist. We have a <em>lot</em> of dependencies. If we got PRs for
+all of them we'd be pretty much unable to do anything. In this case we wanted to specifically limit it to packages
+that are published by Artsy (on the <code>@artsy</code> npm namespace).</p>
+
+<p>The second you have to be a bit careful with. Don't try to project too far or you'll end up choosing a solution far
+too complex for your current needs. In this case, I wanted something that we could selectively extend in the future
+to cover other dependencies. Things like <code>react</code> and <code>react-dom</code> or <code>typescript</code>. Incremental increases without a
+ton of noise.</p>
+
+<a name="Picking.a.solution"></a>
+<h3>Picking a solution</h3>
+
+<p>First things first... we have to have a solution that can update only Artsy's dependencies. I started digging
+through <a href="https://greenkeeper.io/">Greenkeeper</a>'s docs and found a reference to an <a href="https://greenkeeper.io/docs.html#ignoring-dependencies">ignore</a> option.
+Essentially any package that you don't want <a href="https://greenkeeper.io/">GreenKeeper</a> to automatically update you can put in this
+ignore list. That's not really doable in our usecase because we want to ignore everything but a small subset of
+packages.</p>
+
+<p>Checking out <a href="https://renovatebot.com/">Renovate</a>'s docs I found a more promising option:
+<a href="https://renovatebot.com/docs/configuration-options/#excludepackagepatterns">excludePackagePatterns</a>. All I really want to do is include Artsy packages, but this sounded
+like I could do the inverse by excluding all non-Artsy packages. Being as it had that option, supported more
+package managers, and had a more friendly pricing scheme than <a href="https://greenkeeper.io/">Greenkeeper</a> I decided to give
+<a href="https://renovatebot.com/">Renovate</a> a shot.</p>
+
+<a name="Making.it.happen"></a>
+<h3>Making it happen</h3>
+
+<p>I began by enabling <a href="https://renovatebot.com/">Renovate</a> on <a href="https://github.com/artsy/force">Force</a>. You can see the PR <a href="https://github.com/artsy/force/pull/3086">here</a>.
+<a href="https://renovatebot.com/">Renovate</a> has a <em>really</em> excellent on-boarding experience. It first creates a PR that adds its own
+configuration. It shows you what packages will be updated based on that configuration. As you update the config,
+Renovate will update the PR body to show you the results of your changes. This gives you the opportunity to update
+the configuration before it officially activates. If you click the edited dropdown on the PR body you'll see all
+the changes Renovate made to the issue while I was trying to figure out the configuration.</p>
+
+<p><img src="/images/2018-11-26-keeping-dependencies-updated/issue-history.png" alt="GitHub PR edit history" /></p>
+
+<p>It took me a while to figure everything out, just take a look at the <a href="https://github.com/artsy/force/pull/3086/commits">commit history</a>. I'm going to
+work through the final setup just to give you an idea of our setup.</p>
+
+<p>First, I extended <a href="https://renovatebot.com/">Renovate</a>'s base config.</p>
+
+<pre><code>{
+  "extends": [
+    "config:base"
+  ],
+  ...
+}
+</code></pre>
+
+<p>If you've worked with <a href="https://eslint.org">eslint</a>, <a href="https://babeljs.io/docs/en/options#extends">babel</a>, or other tools in the js ecosystem, you've probably
+seen this type of configuration extension. It essentially allows us to use their best practices out of the box.
+Check out their <a href="https://github.com/renovatebot/presets/blob/ef6a6e2e6d3e6ba25239d57d808b0e4dc64f32a3/packages/renovate-config-config/package.json#L19-L34">presets repo</a> if you want to know what it adds specifically.</p>
+
+<p>Next, I set the <a href="https://help.github.com/articles/assigning-issues-and-pull-requests-to-other-github-users/">assignees</a>. When <a href="https://renovatebot.com/">Renovate</a> opens a new PR, it'll assign it to these people
+so that the PR doesn't get missed.</p>
+
+<p>The actual meat of the change is the <code>packageRules</code> setup.</p>
+
+<pre><code>{
+  ...
+  "packageRules": [{
+    "packagePatterns": ["*"],
+    "excludePackagePatterns": ["^@artsy"],
+    "enabled": false
+  }],
+  ...
+}
+</code></pre>
+
+<p><a href="https://renovatebot.com/">Renovate</a> allows you to set up multiple different <code>packageRules</code> and there's a lot of configuration for
+them. I'm not going to go through more than I did, but feel free to read more in their
+<a href="https://renovatebot.com/docs/configuration-options/#packagerules">docs</a>. In the <code>packageRule</code> that I setup, I specified <code>packagePatterns</code> with an
+asterisk to select all dependencies. Then using <code>excludePackagePatteners</code> I excluded anything that started with
+<code>@artsy</code>. Finally (and most importantly), I set <code>enabled</code> to <code>false</code> to disable the dependencies matching those
+combinations of rules. That last part took me a while to figure out. When you're building package rules in
+<a href="https://renovatebot.com/">Renovate</a>, think of it as building out a list of operations to perform.</p>
+
+<p>The last few pieces of config are a little more straight-forward and you can read about those in the docs. The one
+thing that I'll mention is that <a href="https://renovatebot.com/docs/configuration-options/#vulnerabilityalerts">vulnerabilityAlerts</a> <em>ignores</em> <code>packageRules</code> and
+triggers update PRs for anything that's reported to have a vulnerability. You'll have to explicitly disable it if
+you only want reports on certain packages. Though, having it on probably isn't a bad idea...</p>
+
+<a name="Wrapping.up"></a>
+<h3>Wrapping up</h3>
+
+<p>So, that's how we configured <a href="https://renovatebot.com/">Renovate</a> to automatically update npm dependencies in Artsy's namespace.
+It's been extremely useful already. I also went ahead and pulled our configuration out into a <a href="https://github.com/artsy/renovate-config">shared
+repo</a> so that we didn't have to copy these configurations across all of our projects. That's
+a blog post for another day.</p>
+
+<p>Be well friends.</p>
+
+<!-- prettier-ignore -->
+
+
+<!-- prettier-ignore -->
+
+
+<!-- prettier-ignore -->
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Express Reloadable: Optimizing Express.js Development Speed]]></title>
+    <link href="http://artsy.github.io/blog/2017/12/05/Express-Reloadable-Update/"/>
+    <updated>2017-12-05T14:18:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2017/12/05/Express-Reloadable-Update</id>
+    <content type="html"><![CDATA[<p>In <a href="artsy.github.io/blog/2017/09/05/Modernizing-Force/">Modernizing Force</a> we discussed some of the tools we've been working with to modernize <a href="https://www.artsy.net/">Artsy.net</a>'s development environment, from introducing Babel and React to the creation of <a href="https://github.com/artsy/stitch">@artsy/stitch</a>. Increasing overall development speed was another aim, and to that end we released <a href="https://github.com/artsy/express-reloadable">@artsy/express-reloadable</a> which automatically hot-swaps Express.js code without the restart. In this post I'd like to cover some of the issues we've faced since then, and in particular our solution to library code-sharing in Express apps.</p>
+
+<!-- more -->
+
+
+<p>It's common to share NPM packages across projects, and oftentimes packages are developed in parallel. Package <code>A</code> depends on <code>B</code>, but <code>B</code> has a bug and you don't want to have to republish (and reinstall) the package in order to see changes made locally. <code>yarn link</code> (or <code>npm link</code>) was developed for instances like this and while it works great for stop and start processes where boot time is quick, it falls short if the development environment takes a while to load. In UI-rich environments like <a href="https://github.com/artsy/positron">Positron</a> (our Publishing CMS called "Writer") and <a href="https://github.com/artsy/force">Force</a>, each boot would come at a high time-cost due to upfront compilation of assets. Tools like <a href="https://github.com/remy/nodemon">nodemon</a> would automatically stop and start our server process when assets changed but that still didn't alleviate slow iteration times.</p>
+
+<p>To recap from a <a href="/blog/2017/09/05/Modernizing-Force#iteration-time">previous post</a>, <a href="https://github.com/artsy/express-reloadable">@artsy/express-reloadable</a> allows devs to immediately see changes to running Express.js app code:</p>
+
+<pre><code class="javascript">import express from 'express'
+import { createReloadable, isDevelopment } from '@artsy/express-reloadable'
+
+const app = express()
+
+if (isDevelopment) {
+  const mountAndReload = createReloadable(app, require)
+  mountAndReload('./api')
+}
+</code></pre>
+
+<p>Changes made within the <code>api</code> folder are detected and instantly hot-swapped in, and all that's required is a new http request; this is down from an average dev cycle of about 40 seconds for Artsy.net. However, we found an exception while building out Artsy's new <a href="https://www.artsy.net/article/artsy-editorial-midwest-made-artists-mike-kelley-jim-shaw">editorial pages</a>, which involved sharing React components from our UI library <a href="https://github.com/artsy/reaction">Reaction</a> <a href="https://github.com/artsy/positron/blob/master/client/apps/edit/components/content/section_tool/index.jsx#L11">between Positron</a> <a href="https://github.com/artsy/force/blob/master/desktop/apps/article/components/InfiniteScrollArticle.js#L9">and Force</a>. Even though we ran <code>yarn link @artsy/reaction</code> in each consumer app, changes would not be detected and so we had to do a full restart.</p>
+
+<p>To address this, a new <code>watchModules</code> feature <a href="https://github.com/artsy/express-reloadable/pull/3">was added</a>:</p>
+
+<pre><code class="javascript">mountAndReload('./api', {
+  watchModules: [
+    '@artsy/reaction',
+  ]
+})
+</code></pre>
+
+<p>Similar to how files in <code>api/</code> are hot-swapped in on change, symlinked NPM modules placed in the <code>watchModules</code> array will now be reloaded, too.</p>
+
+<p>References:</p>
+
+<ul>
+<li><a href="https://github.com/artsy/express-reloadable">@artsy/express-reloadable</a></li>
+<li><a href="https://github.com/artsy/positron">Positron</a></li>
+<li><a href="https://github.com/artsy/reaction">Reaction</a></li>
+<li><a href="https://github.com/artsy/force">Force</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Mashing Data, Making Maps]]></title>
+    <link href="http://artsy.github.io/blog/2017/01/25/mashing-maps/"/>
+    <updated>2017-01-25T14:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2017/01/25/mashing-maps</id>
+    <content type="html"><![CDATA[<p>We have a lot of really awesome data. Things worth exploring, and visualizing. We have an entire team devoted to it, <a href="https://www.artsy.net/article/artsy-jobs-data-analyst">looks like they're hiring too</a>. Not all of the output of the data comes from that team though, 2 years ago our Director of Product Engineering, <a href="https://github.com/craigspaeth">Craig Spaeth</a> created a <a href="https://github.com/artsy/partner-map">static-site generator</a> that mapped our partners around the globe. Last week I've been improving it.</p>
+
+<p><img src="/images/mappings/preview.gif" alt="An animated map of galleries" /></p>
+
+<p>Projects like these happen in most companies, quick hacks for one offs that are opened 2 years later by someone completely different to build on top of it. In trying to follow <a href="http://programmer.97things.oreilly.com/wiki/index.php/The_Boy_Scout_Rule">the Boy Scout rule</a>, I've cleaned it up and consolidated some other similar projects. This post is a rough road-map of what making <a href="https://github.com/artsy/partner-map/pull/3">this PR</a> looked like.</p>
+
+<!-- more -->
+
+
+<p>The aim was to visualise data we had created on when galleries were founded. Then to be able to see how that corresponds with our artwork inquiry data.</p>
+
+<a name="Coming.back.to.an.npm.app.2.years.later"></a>
+<h2>Coming back to an npm app 2 years later</h2>
+
+<p>Straight off the bat, nothing worked :D</p>
+
+<p>This isn't too surprising, I'm pretty sure we'd have the same problem with an iOS project too. This was mainly due to dependencies switching between major versions due to zero locking on any of the versions.</p>
+
+<pre><code class="json">{
+  ...
+  "dependencies": {
+    "async": "*",
+    "browserify": "*",
+    "coffee-script": "*",
+    "coffeeify": "*",
+    "d3": "*",
+    "datamaps": "git://github.com/markmarkoh/datamaps.git",
+    "mongojs": "*",
+    "topojson": "*",
+    "watchify": "*"
+  }
+}
+</code></pre>
+
+<p><a href="/blog/2016/11/14/JS-Glossary/#yarn">Switching to Yarn</a> fixed this by introducing a lock file, this means that the next time someone else comes along they'll get the exact same setup that I've been working against.</p>
+
+<a name="CoffeeScript"></a>
+<h2>CoffeeScript</h2>
+
+<p>I have zero experience with <a href="http://coffeescript.org">CoffeeScript</a>. My high-level JavaScript experience only comes from the last 6 months, and it's a different world at the minute. Two years ago CoffeeScript was in it's prime, as the first of the JavaScript transpilers - if this is new to you, I'd strongly recommend watching this talk:</p>
+
+<iframe width="640" height="360" src="https://www.youtube.com/embed/DspYurD75Ns" frameborder="0" allowfullscreen></iframe>
+
+
+<p>&nbsp;</p>
+
+<p>We have a lot of CoffeeScript in production, here's a few key parts of Artsy's infrastructure:</p>
+
+<ul>
+<li><a href="https://github.com/artsy/force">artsy/force</a> - our website</li>
+<li><a href="https://github.com/artsy/microgravity">artsy/microgravity</a> - our mobile website</li>
+<li><a href="https://github.com/artsy/positron">artsy/positron</a> - our editorial staff's CMS</li>
+</ul>
+
+
+<p><a href="https://github.com/artsy?language=coffeescript">..and there's more</a>. Thus having an understanding of it is pretty essential to writing code across all of Artsy's businesses. The TLDR for CoffeeScript is that it applies a lot of the elegance in Ruby to JavaScript. You should feel comfortable with JavaScript before using it, as it requires understanding what the language facade is doing.</p>
+
+<p>A lot of the best ideas from CoffeeScript have been migrated into <a href="/blog/2016/11/14/JS-Glossary/#es6">modern JavaScript</a>. My favourite is ease in how functions can be created:</p>
+
+<pre><code class="coffee">random = (min, max) -&gt; Math.round(Math.random() * (max - min) + min)
+</code></pre>
+
+<p>It also supports my favourite part of <a href="http://danger.systems/guides/a_quick_ruby_overview.html#variables-and-keyword-syntax">Ruby's handling of code-flow</a> using single-line reverse ifs:</p>
+
+<pre><code class="coffee">pgClient.connect (err) -&gt; 
+  console.error(err) if err
+</code></pre>
+
+<p>Which gets to the crux of CoffeeScript's ideology, I would often start with writing it in JavaScript in my head, then slowly remove syntax. When I got stuck I visited <a href="http://js2.coffee">js.coffee</a> to see how something I know what I want to write would look.</p>
+
+<a name="Databases"></a>
+<h2>Databases</h2>
+
+<p>You want to convert all data your companies data into something useful? You better get that data available locally or you're going to spend a long time iterating. As a side-effect of Artsy converting <a href="/blog/2014/05/12/continuous-integration-for-service-oriented-architectures/">to microservices</a> I needed three separate databases to connect all the data I needed. It covers over two types of databases: MongoDB and Postgres.</p>
+
+<a name="MongoDB"></a>
+<h3>MongoDB</h3>
+
+<p>MongoDB is a NoSQL document store database, this means it has no formal data-structure. It feels very JavaScript-y because of this. I host it <a href="http://gcollazo.github.io/mongodbapp/">inside an app</a>, and I <a href="https://robomongo.org">use RoboMongo</a> to inspect it.</p>
+
+<p></div></div><a href='/images/mappings/robomongo.png'><img src="/images/mappings/robomongo.png"></a><div class='meta-container'><header>&nbsp;</header></div><div class='date-container'>&nbsp;</div><div class='content-container'><div class='entry-content'></p>
+
+<p>This works out nicely, I needed to make a local copy of the databases, so I used the answers from this <a href="http://stackoverflow.com/questions/23652402/how-to-copy-a-collection-from-one-mongodb-to-another">stack overflow</a></p>
+
+<pre><code class="sh"># You'll need to figure out how to connect to your database
+mongoexport -d gravity_staging -c artworks -o artworks_collection.json
+
+# Then into merge it into your development machine
+mongoimport -d gravity_development -c artworks --file artworks_collection.json
+</code></pre>
+
+<p>Doing this for the specific collections you're interested in will help get you set up.</p>
+
+<a name="Postgres"></a>
+<h3>Postgres</h3>
+
+<p>Other databases I needed access to were Postgres databases, I don't know much about databases but Postgres seems to be <a href="https://blog.heroku.com/postgres-essentials">Heroku's favourite database</a> so I'll take that endorsement as gold. It's an SQL database, which you can do <a href="https://github.com/calebmer/postgraphql">amazing things with</a>. I host it <a href="http://postgresapp.com">inside an app</a> and use <a href="https://eggerapps.at/postico/">Postico</a> to inspect it.</p>
+
+<p></div></div><a href='/images/mappings/postico.png'><img src="/images/mappings/postico.png"></a><div class='meta-container'><header>&nbsp;</header></div><div class='date-container'>&nbsp;</div><div class='content-container'><div class='entry-content'></p>
+
+<p>I grabbed a <a href="https://devcenter.heroku.com/articles/heroku-postgres-backups">backup</a> of our databases, they come down as a <a href="https://www.commandprompt.com/blog/a_better_backup_with_postgresql_using_pg_dump/">pg_dump file</a> file which you can replicate locally in your postgres using a command like:</p>
+
+<pre><code class="sh">pg_restore --verbose --clean --no-acl --no-owner -h localhost -U [your_name] -d [db_name] [filepath]
+</code></pre>
+
+<a name="Database.as.CSV"></a>
+<h3>Database as CSV</h3>
+
+<p>This almost gave me all the data necessary to start work. The other part is a good chunk of new data we wanted mapping was not in a database, it was in a collection of spreadsheet files and occasionally hosted on google docs. Meaning it's time to reach for a good parser. Whenever this happens I reach for Ruby, which ships with a great CSV parser/writer. I also open the CSV inside <a href="http://www.apple.com/numbers/">Numbers</a> from Apple, which does a great job of providing visibility ( and letting you make quick changes.)</p>
+
+<p>I have a bunch of scripts like this, one which generate more CSV files - I'm keeping the filenames intact to give you a real sense of how much of a quick hack these are:</p>
+
+<pre><code class="ruby"># Create a new CSV file
+CSV.open("/Users/orta/Downloads/end-result.csv", "wb") do |csv|
+  # Loop through both derived tables
+  tables = ["Partners-Table 1.csv", "Non-Partners-Table 1.csv"]
+  tables.each do |t| 
+    CSV.foreach("/Users/orta/Documents/Gallery\ Date\ Research/" + t) do |row|
+      next unless row[0] # bad data
+      next unless row[1] # no dates
+
+      # don't trust the CSV
+      query = Regexp.new(row[0], Regexp::IGNORECASE)
+      partner = Partner.where(given_name: query).first
+      partner ||= Partner.where(display_name: query).first
+
+      start_date = row[1]
+
+      # did we find a partner &amp; a location?
+      if partner and partner.location_coordinates and partner.location_coordinates.first
+        loc = partner.location_coordinates.first
+        csv &lt;&lt; [partner.name, start_date, loc[:lat], loc[:lon]]
+      else
+        csv &lt;&lt; [row[0], start_date, nil, nil]
+        # look up org in burden inside postgres
+        # go from org -&gt; lat, long via location's organization_id
+      end
+    end
+  end
+end
+</code></pre>
+
+<p>Once this was ready I created a new script to pull things from another databasea, in theory this code could have gone inside the previous script, but it felt like a good time to get up and make a tea during a pairing session.</p>
+
+<pre><code class="ruby">require 'CSV'
+conn = PG.connect(host: "localhost", dbname: 'burden')
+
+# Write to another end-results
+CSV.open("/Users/orta/Downloads/end-result-2.csv", "wb") do |csv|
+  CSV.foreach("/Users/orta/Downloads/end-result.csv") do |row|
+    # gravity lookups passed, don't need to do anything
+    if row &amp;&amp; row[2]
+      # put in the normal row
+      csv &lt;&lt; row
+      next
+    end
+
+    # Galleries  have ' in their names, breaking SQL
+    name = row[0].gsub(/'/, "\\'")
+    result = conn.exec( "SELECT latitude, longitude FROM locations WHERE organization_id in (SELECT id FROM organizations WHERE name = '#{name}') " )
+
+    # If we've found something, set it
+    if result.cmd_tuples &gt; 0 and result[0]
+      row[2] = result[0]["latitude"]
+      row[3] = result[0]["longitude"]
+    end
+    result.clear
+
+    csv &lt;&lt; row
+  end
+end
+</code></pre>
+
+<p>Then finally with a fully fleshed out CSV, I could convert that into something that's useful for this project, JSON:</p>
+
+<pre><code class="ruby">require 'CSV'
+require 'JSON'
+
+data = []
+CSV.foreach("/Users/orta/Downloads/end-result-2.csv") do |row|
+  created_at = row[1]
+  if row[1] &amp;&amp; created_at.strip.length &gt; 0 &amp;&amp; row[2] and row[3]
+    data &lt;&lt; { name: row[0], radius: 4, created_at: created_at.to_i, latitude: row[2].to_f, longitude: row[3].to_f }
+  end
+end
+
+File.open("/Users/orta/dev/js/sites/partner-map/data/jsons/galleries-subset.json","w") { |f| f.write( data.sort_by { |h| h[:created_at] }.to_json) }
+</code></pre>
+
+<p>And that gives me the raw data that I can now use with our mapping system.</p>
+
+<a name="D3...Datamaps"></a>
+<h2>D3 + Datamaps</h2>
+
+<p>There are concepts that you can just pick up, because they are simple evolutions of something you know. <a href="https://d3js.org">D3 is not one of these</a>. D3 is a system for making data-based graphical documents. Learning how to do D3 properly takes time and a perspective change. Luckily we had a Lunch &amp; Learn <a href="https://twitter.com/orta/status/809451441882628096">2 weeks ago on D3</a> and now I am a total domain expert.</p>
+
+<p>I jest. However, the talk was definitely enough to do the majority of what I wanted to do. Which was take some static data, and animate it over time. In these cases I get out the trusty <code>setTimeout</code> API call in JavaScript which gets the ball rolling.</p>
+
+<p>I had a few thousand datapoints with a <code>date_created</code> attribute, so it was pretty simple to pull that out and  group them according to a time interval. I wanted the freedom to decide how long each animation should last, there probably is a D3 API for this kind of thing but I never spent the time researching. Maybe the next developer can do that.</p>
+
+<p>We use the <em>amazing</em> library <a href="http://datamaps.github.io">Datamaps</a> to show the globe and handle a lot of the lat/long -> pixel mathematics. It is built in a D3 mindset, so with each interval of the animation, I added all of the locations or arcs to it and D3/Datamaps will derive the difference between what it has and what is new and animate those. This makes thinking about the animation simple.</p>
+
+<a name="Too.much.data"></a>
+<h2>Too much data</h2>
+
+<p>One problem I kept hitting against was that we were working with a dataset that couldn't fit into memory. Initially a direct port of our algorithm to get all of Artsy's partners and locations would crash node due to memory pressure. Originally we were working with a much smaller data-set, now it's multiple orders of magnitude bigger. These were pretty easy to fix with a bit of understanding about all the asynchronous callbacks and by finding the <code>async.eachOfLimit</code> <a href="http://caolan.github.io/async/docs.html#eachOfLimit">function</a>.</p>
+
+<p>Another issue with the amount of data came through trying to visualise them. It would bring down my computer, in the end after trying a few ideas (looking for averages, grouping similar data-points) I found the simplest option to be the one worth shipping. <code>rand(x, y)</code>.</p>
+
+<pre><code class="coffee">#
+# Take a set of arcs, and pick a random 1 in x
+# yarn run coffee -- data/inquiries/inquiry-random-subsets.coffee
+#
+
+fs = require 'fs'
+
+# Random number between min, max
+random = (min, max) -&gt; Math.round(Math.random() * (max - min) + min)
+
+# Take an array or arcs, and reduce it to one in amount, then save to path
+derive = (amount, arcs, path) -&gt;
+  luckyOnes = arcs.filter (arc) -&gt; random(0, amount) == 23
+  console.log "There are #{luckyOnes.length} arcs from #{arcs.length} in #{path}"
+  fs.writeFileSync __dirname + '/' + path, JSON.stringify luckyOnes
+
+all_arcs = require '../jsons/every-inquiry-arcs.json'
+derive(1500, all_arcs, "../jsons/all-inquiries-random-subset.json")
+</code></pre>
+
+<p>This ended up creating a pretty useful representation of the whole data-set, in a way that is actually renderable without killing the browser's process.</p>
+
+<a name="Code.Cleanup...Docs"></a>
+<h2>Code Cleanup + Docs</h2>
+
+<p>I spent most of my time inside <a href="https://github.com/artsy/partner-map">artsy/partner-map</a> but we had another repo with very similar code, <a href="https://github.com/artsy/inquiry-map">partner/inquiry-map</a>. So I took the time to merge the two of them, officially deprecating inquiry-map. Now those maps can be generated by partner-map, and there's space for more expansion.</p>
+
+<p>Other than that, I took the time to improve the repo and to do this write-up, so that the next person who comes along can have an idea of some of the scripts and how they all fit together.</p>
+
+<a name="Going.solo"></a>
+<h2>Going solo</h2>
+
+<p>For a project like this, I did no code review, no testing or other staples of engineering culture at Artsy. This is fine for a project of this scope and pace.</p>
+
+<p>However, I think it's always worth throwing in an extra 2-3 hours at the end of a hack project to write up some of the tricky parts and cleaning up the codebase for the next person. If you don't write some tests, then writing some docs or do a <a href="http://artsy.github.io/blog/2015/11/05/Emergence-Code-Review/">quick video</a>.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Helping the Web Towards OSS by Default]]></title>
+    <link href="http://artsy.github.io/blog/2016/09/06/Milestone-on-OSS-by-Default/"/>
+    <updated>2016-09-06T12:17:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2016/09/06/Milestone-on-OSS-by-Default</id>
+    <content type="html"><![CDATA[<p>The main Artsy.net website for the desktop, <a href="https://github.com/artsy/force">Force</a>, was our first Artsy application to open its source code, <a href="http://artsy.github.io/author/craig">Craig</a> and <a href="http://artsy.github.io/author/brennan">Brennan</a> did it <a href="/blog/2014/09/05/we-open-sourced-our-isomorphic-javascript-website/">back in 2014</a>. Force's public offering laid the groundwork for the iOS OSS projects to come afterwards: <a href="/blog/2014/11/13/eidolon-retrospective/">Eidolon</a>, <a href="/blog/2015/04/28/how-we-open-sourced-eigen/">Eigen</a>, <a href="/blog/2015/08/06/open-sourcing-energy/">Energy</a> and <a href="/blog/2015/11/05/Emergence-Code-Review/">Emergence</a>.</p>
+
+<p>Though Force wasn't quite Open Source by Default, it represented a <em>really</em> important step for  Artsy's OSS perspective but was not the end goal. We were opening our source, but not opening our process.</p>
+
+<p>This month both <a href="https://github.com/artsy/force">Force</a>, the desktop version of <a href="https://www.artsy.net/">Artsy.net</a> and <a href="https://github.com/artsy/microgravity">Microgravity</a>, the mobile version - moved to being built entirely in the open. Read on to find out how.</p>
+
+<!-- more -->
+
+
+<a name="Force"></a>
+<h2>Force</h2>
+
+<p>Over the course of the last month, I've sat on and off with Charles "<a href="http://charlesbroskoski.com/_/">Cab</a>" Broskoski, and figured out what it would take to migrate Force to work in the public. Previous to this, work happened on a private repo, and we would push that code to the public.</p>
+
+<p>We scoped out what it would require, creating an issue that summarized the work. Then we waited for 2 weeks, to give people the chance to discuss the idea and to offer examples for why we should delay or not move. Not all projects <em>should</em> be OSS, and everyone should have a say when it affects them - giving some time let the team speak their mind. Especially during summer, when people were less active at work.</p>
+
+<p></div></div><a href='/images/oss-milestone/force-oss.png'><img src="/images/oss-milestone/force-oss.png"></a><div class='meta-container'><header>&nbsp;</header></div><div class='date-container'>&nbsp;</div><div class='content-container'><div class='entry-content'></p>
+
+<p>It had been 9 months since the last commit to the public repo, and so auditing the commits was a matter of investigating into configuration files, and seeing what's changed since the last public commit.</p>
+
+<p>Next up, we renamed the current <code>force</code> repo to <code>force-private</code>. This was to keep the old issues and PRs around after we moved to working in the public. With <code>force</code> now available we re-named the already public project.</p>
+
+<p>We then ensured all outstanding PRs were merged or closed, and pushed the commits from <code>force-private</code> to the now OSS <code>force</code>.</p>
+
+<a name="CI"></a>
+<h3>CI</h3>
+
+<p>To get back up to speed we needed to set up CI, figuring this out took time.</p>
+
+<p>We got testing up and running in no time. However, Force is deployed via <a href="https://semaphoreci.com/">Semaphore CI</a>, and to deploy we needed to push compiled assets to S3. To pull that off, we needed access to an S3 key, and token.</p>
+
+<p>In our iOS projects, <a href="https://github.com/artsy/eidolon/pull/607">we do not expose environment variables</a> to PRs from forks, so we don't expect them to pass from external contributors. This is fine, because we have <a href="http://artsy.github.io/blog/2016/01/13/OSS-Expectations/">different expectations</a> for OSS apps vs libraries. We do this to ensure that we don't receive a PR that adds <code>printenv</code> to the CI scripts, exposing our secret keys.</p>
+
+<p>As we couldn't add the keys to our testing environment, we added them to our heroku environment then took them from that. Semaphore sets up our heroku environment only during deployment, so in the deployment phase, we can use a line like:</p>
+
+<pre><code class="sh">export FORCE_S3_KEY=$(heroku config:get FORCE_S3_KEY --app force-production)
+</code></pre>
+
+<p>This sets up the environment like we used to have it when force was private.</p>
+
+<a name="Team"></a>
+<h3>Team</h3>
+
+<p>We needed to move all the team members to using the OSS version of our apps. This is a little bit complicated as <a href="/blog/2012/01/29/how-art-dot-sy-uses-github-to-build-art-dot-sy/">we work from forks</a>. <a href="http://www.anandarooproy.com/portfolio">Roop</a>, an engineer on the web team, created a "Force OSS Dance Script" ( sidenote: <a href="http://www.anandarooproy.com/portfolio">his site</a> is worth a visit, there's 15 years of interesting maps. )</p>
+
+<pre><code class="sh">## RENAME THE OLD REPO
+
+# on GitHub
+
+# - Go to my fork https://github.com/&lt;username&gt;/force
+# - Go to Settings tab
+# - Rename repo to "force-private"
+
+# on my local machine
+
+mv force force-private
+cd force-private
+git remote set-url upstream git@github.com:artsy/force-private.git
+git remote set-url origin git@github.com:&lt;username&gt;/force-private.git
+
+
+## FORK AND CLONE THE NEW REPO
+
+# back to GitHub
+
+# - Go to the new Force repo https://github.com/artsy/force
+# - Fork it to my account
+
+# back to my local machine
+
+git clone git@github.com:&lt;username&gt;/force.git
+cd force
+git remote add upstream git@github.com:artsy/force.git
+cp ../force-private/.env ./
+cp ../force-private/node_modules ./ # or just 'npm install' again
+
+
+# all good now - both repos on local machine with correct remotes, envs, deps
+</code></pre>
+
+<p>For Force, all the same commits existed in both repos, so it would be difficult to push secrets to the open repo by accident. However, individuals did to sync up a new version of their forks.</p>
+
+<p>And that, is how we moved force into OSS by Default. :+1: - We'll cover the issues migration later.</p>
+
+<a name="Microgravity"></a>
+<h2>Microgravity</h2>
+
+<p>I have a lot of love for Microgravity. It's the web project that made <a href="/blog/2015/04/28/how-we-open-sourced-eigen/">Eigen</a> possible. Once Force had moved, I started spending time with Craig trying to understand what it would take to open up Microgravity.</p>
+
+<p></div></div><a href='/images/oss-milestone/micrograv-oss.png'><img src="/images/oss-milestone/micrograv-oss.png"></a><div class='meta-container'><header>&nbsp;</header></div><div class='date-container'>&nbsp;</div><div class='content-container'><div class='entry-content'></p>
+
+<p>It is no surprise to find a lot of overlap, both projects are based on the same foundations: <a href="https://github.com/artsy/ezel">Ezel.js</a>.</p>
+
+<p>We didn't trust the commit history for microgravity, so we nuked it. Same as our native OSS apps.</p>
+
+<p>We came up with a pattern to make it easier for people to migrate issues, we created a <code>migrate</code> GitHub label that anyone can apply to an issue in a private repo. Then we use <a href="https://github-issue-mover.appspot.com">Issue Mover for GitHub</a> with some inline JavaScript to loop through all our issues to migrate. As it's applying a label we can ask product owners and designers to choose ones that are important to them too.</p>
+
+<p>--</p>
+
+<p>I love that I got to help make these changes, the web team started the process of opening our apps at Artsy, then the mobile team took the next big step. Now the teams are both in lock-step, and if you work on the front-end at Artsy - OSS by Default is the way we all work now.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[On our implementation of React Native]]></title>
+    <link href="http://artsy.github.io/blog/2016/08/24/On-Emission/"/>
+    <updated>2016-08-24T12:17:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2016/08/24/On-Emission</id>
+    <content type="html"><![CDATA[<center>
+ <img src="/images/emission/emission-logo-artsy.svg" style="height:300px;margin-bottom: 60px;">
+</center>
+
+
+<p>I arrived fashionably late to the <a href="/blog/2016/08/15/React-Native-at-Artsy/">React Native party</a> in Artsy. I had been a part of our <a href="/blog/2016/08/09/the-tech-behind-live-auction-integration/">Auctions Team</a>, where we worked in Swift with <a href="https://cocoapods.org/pods/Interstellar">some light-FRP</a>. We were not affected by the 4 months of simultaneous work on moving to React Native, at all.</p>
+
+<p>It was a quiet revolution. I did not have to install <code>npm</code>, I made zero changes to the code for auctions and the whole app's infrastructure barely changed. Yet we moved to making all new code inside our 3 year old iOS app use React Native. What gives?</p>
+
+<p>Well, first up we weren't planning a re-write, we don't have that kind of luxury and the scope of our app is too big compared to the team working on it. Second, we reused existing dependency infrastructure to support JavaScript based apps. Read on to find out what that looks like.</p>
+
+<!-- more -->
+
+
+<a name="Why.we.were.in.a.good.position.to.do.this"></a>
+<h3>Why we were in a good position to do this</h3>
+
+<p>Let's talk a little about the Artsy flagship app, <a href="https://github.com/artsy/eigen/">Eigen</a>. It's an app that aimed to comprehensively cover the art world. From <a href="https://www.artsy.net/shows">Shows</a> to <a href="https://www.artsy.net/galleries">Galleries</a>, <a href="https://www.artsy.net/art-fairs">Fairs</a> to <a href="https://www.artsy.net/auctions">Auctions</a>, <a href="https://www.artsy.net/institutions">Museums</a> to <a href="https://www.artsy.net/articles">Magazines</a>.</p>
+
+<p>It all looks a bit like this:</p>
+
+<p></article>
+<a href='/images/emission/eigen-overview.jpg' style="">
+  <img src="/images/emission/eigen-overview.jpg" alt="Overview of Emission" style="width:100%;">
+</a>
+<article class="post">
+</p>
+
+<p>Our app neatly splits into two areas of view controllers, ones that act as a browser chrome, and individual view controllers that normally map 1:1 to <a href="https://github.com/artsy/eigen/blob/master/Artsy/App/ARSwitchBoard.m#L122">routes</a> on the Artsy website.</p>
+
+<p>For example, the route <code>artsy.net/artwork/glenn-brown-suffer-well</code> maps to the native <code>ARArtworkViewController</code>.</p>
+
+<p></article>
+<a href='/images/emission/eigen.svg' style="">
+  <img src="/images/emission/eigen.svg" alt="Overview of Eigen" style="">
+</a>
+<article class="post">
+</p>
+
+<p>Just as a browser knows very little about the individual content of the pages that it's rendering, the eigen chrome exists <em>relatively</em> independent of the view controllers that are showing.</p>
+
+<p>Each view controller also knows very little about each-other, so actions that trigger a new view controller are generally done by creating a string route and passing it through the routing system. I've wrote about this pattern in <a href="https://artsy.github.io/blog/2015/08/15/Cocoa-Architecture-Router-Pattern/">Cocoa Architecture: Router Pattern</a>.</p>
+
+<p>Interestingly, if the router cannot route a view controller, it will pass through to a web view. This is why we consider the app a <a href="http://artsy.github.io/blog/2015/08/24/Cocoa-Architecture-Hybrid-Apps/">hybrid app</a>. This pattern means adding new view controllers is extremely easy.</p>
+
+<a name="Introducing.Emission"></a>
+<h3>Introducing Emission</h3>
+
+<p>Emission is what we use to contain all of our React Native components. Our flagship app Eigen, can depend on and use without needing to bother with the implementation details of React Native. At it's core, Emission is:</p>
+
+<ul>
+<li>A node module.</li>
+<li>A CocoaPod.</li>
+<li>An iOS App.</li>
+</ul>
+
+
+<a name="The.Node.Module"></a>
+<h4>The Node Module</h4>
+
+<p>Emission itself, is a node module. In our case, it is a JavaScript library that exposes 3 JavaScript objects.</p>
+
+<pre><code class="javascript">/* @flow */
+'use strict';
+
+import Containers from './lib/containers';
+import Components from './lib/components';
+import Routes from './lib/relay/routes';
+
+import './lib/relay/config';
+import './lib/app_registry';
+
+export default {
+  Containers,
+  Components,
+  Routes,
+};
+</code></pre>
+
+<p>Another node project can have Emission as a dependency - then can access our <code>Container</code>s, <code>Component</code>s and <code>Route</code>s. A container is a <a href="https://facebook.github.io/relay/docs/api-reference-relay-container.html">Relay container</a>, a component is a <a href="https://facebook.github.io/react/docs/component-api.html">React Component</a> and a Route is a <a href="https://facebook.github.io/relay/docs/guides-routes.html#content">Relay Route</a>.</p>
+
+<p>The thing that's interesting from the integration side, is that each <code>Container</code> is effectively a View Controller that Emission provides to a host application. React Native ignores  the concept of view controllers from the Cocoa world, so we have an <a href="https://github.com/artsy/emission/blob/eb9d0f6ca0edd3eb9f07dd9ff3b8499f095bc45b/Pod/Classes/ViewControllers/ARComponentViewController.m">ARComponentViewController</a> which is subclassed for each exposed <code>Component</code> class.</p>
+
+<a name="The.iOS.App"></a>
+<h4>The iOS App</h4>
+
+<p>The iOS app acts as a host target for the CocoaPod, and provides an instance of an <a href="https://github.com/artsy/emission/blob/master/Pod/Classes/Core/AREmission.m">AREmission</a> object to the view controllers using React Native. The app is nothing special, it is the default app that is created using <code>pod lib create</code>. We then <a href="https://github.com/artsy/emission/blob/eb9d0f6ca0edd3eb9f07dd9ff3b8499f095bc45b/Example/Podfile">use CocoaPods</a> to bring in React from inside the <code>node_modules/</code> folder the Emission node module creates.</p>
+
+<p>The <code>AREmission</code> instance is the intermediary between the host-app (<a href="https://github.com/artsy/emission/blob/eb9d0f6ca0edd3eb9f07dd9ff3b8499f095bc45b/Example/Emission/AppDelegate.m#L56">The Emission Example app</a>, or <a href="https://github.com/artsy/eigen/blob/41b00f6fe497de9e902315104089370dea417017/Artsy/App/ARAppDelegate%2BEmission.m">Eigen</a>.) It has an API for handling routing, and passing authentication credentials into the React Native world.</p>
+
+<p>We use the example app to do development inside React Native. As of right now, it is simply a tableview that provides a list of view controllers <a href="https://github.com/artsy/emission/blob/eb9d0f6ca0edd3eb9f07dd9ff3b8499f095bc45b/Example/Emission/AppDelegate.m#L159-L169">that represent an exposed Container</a>. Once you are in the right view controller, you can rely on <a href="http://facebook.github.io/react-native/releases/0.31/docs/debugging.html#automatic-reloading">Hot Reloading</a> to simplify your work.</p>
+
+<a name="The.Pod"></a>
+<h4>The Pod</h4>
+
+<p>An important part of working with React Native, is that you can choose to use native code when appropriate. The <a href="https://github.com/artsy/emission/blob/eb9d0f6ca0edd3eb9f07dd9ff3b8499f095bc45b/Emission.podspec">Pod for</a> Emission, created entirely in Objective-C, provides:</p>
+
+<ul>
+<li>Communication between React Native and the host app objects via <a href="https://facebook.github.io/react-native/docs/native-modules-ios.html">native modules</a>.</li>
+<li><code>UIViewController</code> subclasses for Host apps to consume.</li>
+<li>Bridges for existing native views (like our <a href="https://github.com/artsy/extraction/blob/d6a32186f7098eb2ec5d05e2fb5302a8378eff70/Extraction/Classes/ARSwitchView.m">SwitchView</a>) into React Native.</li>
+</ul>
+
+
+<p>The choice of Objective-C is for simplicity, and language stability. Swift is technically an option, but it's not  worth the complications for <a href="https://github.com/artsy/emission/tree/eb9d0f6ca0edd3eb9f07dd9ff3b8499f095bc45b/Pod/Classes">a few simple objects</a>.</p>
+
+<p>In order to share native views with our host app, Eigen, we created a library to just hold the shared UI components, <a href="https://github.com/artsy/extraction">Extraction</a>. These are <a href="https://github.com/artsy/extraction/tree/d6a32186f7098eb2ec5d05e2fb5302a8378eff70/Extraction/Classes">factored out of Eigen</a>, and into a pod. Emission and Eigen have this as a dependency.</p>
+
+<a name="Pod.Deployment"></a>
+<h4>Pod Deployment</h4>
+
+<p>What makes this work well, from the perspective of Eigen is that the React Native comes in atomically. The Podspec <a href="https://github.com/artsy/emission/blob/master/Emission.podspec#L17-L18">references</a> the few native classes, and a single JavaScript file.</p>
+
+<p>This JavaScript file is the bundled version of all our React Native code. It's <a href="https://github.com/artsy/emission/blob/eb9d0f6ca0edd3eb9f07dd9ff3b8499f095bc45b/package.json#L7">updated  by running</a> <code>npm run bundle</code>. This generates both the minified JS, and a source map so that we can transcribe the error reports into the code we write.</p>
+
+<p>Using the CocoaPod, Emission can provide native view controllers that use React Native under the hood. The host app does not need to know the underlying details like <code>npm</code>.</p>
+
+<a name="On.Emission"></a>
+<h3>On Emission</h3>
+
+<p>Whether this is a pattern other apps can follow is hard to say, we were in a great position to do this. Our app has view controllers that have very little communication with each other and the host app does not need to bridge large amounts of information.</p>
+
+<p>As ever, our work is open source, and we ensure that anyone can download and run Emission, so if you'd like to understand more, clone <a href="https://github.com/artsy/emission#reactions--emissions">artsy/emission</a> and study the implementation.</p>
+]]></content>
+  </entry>
+  
+</feed>

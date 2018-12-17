@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: team | Artsy Engineering]]></title>
+  <link href="http://artsy.github.io/blog/categories/team/atom.xml" rel="self"/>
+  <link href="http://artsy.github.io/"/>
+  <updated>2018-12-16T10:16:31+00:00</updated>
+  <id>http://artsy.github.io/</id>
+  <author>
+    <name><![CDATA[]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[My First Week On Call]]></title>
+    <link href="http://artsy.github.io/blog/2018/05/30/my-first-week-on-call/"/>
+    <updated>2018-05-30T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/05/30/my-first-week-on-call</id>
+    <content type="html"><![CDATA[<p>As I write this, I have completed my first ever engineering on-call rotation at Artsy, so naturally I had to write a blog post about some of the things I learned.</p>
+
+<!-- more -->
+
+
+<p>A year ago, I would have been terrified to be one of two engineers responsible for handling everything from re-sending automated emails to fixing total site outages, but <a href="https://ashfurrow.com/blog/perspective-of-the-polyglot/">I have grown a lot</a> so being on-call was only <em>regular</em>-level intimidating. And indeed, with supportive documentation and a good partner, I didn't experience any situations where I felt truly lost about what to do next.</p>
+
+<p>But I did learn a few things. So let's discuss a few things that weren't immediately obvious to me.</p>
+
+<a name="Ignore.My.Instinct.to.Fix.Things.Right.Away"></a>
+<h2>Ignore My Instinct to Fix Things Right Away</h2>
+
+<p>This sounds really counterintuitive, right? I mean, a server is down, let's reboot it so it's up again! It's got a little red X next to it in AWS, let's make it a green checkmark again! I want that checkmark!</p>
+
+<p>But that's not always the best course of action. Sometimes, fixing something right away would deprive us of the opportunity to figure out <em>why</em> it broke in the first place. For example: we had Rails servers running out of disk space, and rebooting those servers would have refreshed their drives and fixed the problem, but one of our platform engineers asked me to wait so they could ssh in and examine the contents of the filesystems. In the mean time, the load balancer had already routed traffic around the servers, so there was no need to rush to fix anything.</p>
+
+<p>My instinct to fix things right away was at odds with the team's desire to understand why something broke.</p>
+
+<a name="What.is.an.Incident..Even."></a>
+<h2>What is an Incident, Even?</h2>
+
+<p>One thing became really clear to be, really quickly: people have many different, valid perspectives on what an "incident" is. Our support documentation goes into detail about what our responsibilities as on-call engineers are responsible for, and what should be routed through product teams to be prioritized, but my support partner and I still hit cases where we weren't quite sure if we should take action.</p>
+
+<p>Sometimes, issues of critical importance were brought to our #incidents Slack channel, but weren't <em>really</em> incidents, from an Engineering perspective. We erred on the side of helping our colleagues, but it's difficult. I want to help people! But I also have responsibilities. Balancing the two is a skill every engineer has to develop, and being on-call highlighted the importance of balance in a new way for me.</p>
+
+<p>My first ever jobs were retail, where I helped rural Canadians learn to use their first ever cell phones, and IT helpdesks; both taught me how to handle support requests in a way that makes the other person feel like things are going to be okay. I had to reapply those skills when on-call because sometimes what people were bringing to my attention fell outside the scope of an "incident". Consider the response:</p>
+
+<blockquote><p>What you've reported isn't an incident, talk to your PM.</p></blockquote>
+
+<p>... and contrast it with:</p>
+
+<blockquote><p>This falls outside the scope of immediate support, so I've opened a ticket for you. You can talk to the team PM about prioritization.</p></blockquote>
+
+<p>This kind of reply also aligns with Artsy's <a href="https://github.com/artsy/meta/blob/master/meta/what_is_artsy.md#artsy-values">values</a> of <strong>Positive Energy</strong> and <strong>People are Paramount</strong>. Everyone working at Artsy is here to make art a bigger part of culture, and that shared understanding helped.</p>
+
+<a name="We.Need.to.Improve.our.Automated.Alerts"></a>
+<h2>We Need to Improve our Automated Alerts</h2>
+
+<p>For a few months now, Artsy Engineering has been discussing how to consolidate our automated alerts. I somehow got it in my head that anything in our #alerts channel needed immediate engineer attention, when in fact, our #alerts channel is often noisy. By the final day of my rotation, I learned that not everything needed immediate attention.</p>
+
+<p>That's a bit of a problem. There are alerts that need immediate intervention ("the API servers are all down") and there are alerts that need no intervention ("this server is responding slowly, oh wait, it's back to normal, never mind"), and then there are the tricky ones: the ones that need <em>eventual</em> intervention ("gosh, our image processing API out of disk space for the third time in a month, we need to look into that"). Figuring out how to sort mid-level, important-but-not-urgent automated alerts from critical ones will be a critical part of our long-term support process.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Fully Automated Standups]]></title>
+    <link href="http://artsy.github.io/blog/2018/05/07/fully-automated-standups/"/>
+    <updated>2018-05-07T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/05/07/fully-automated-standups</id>
+    <content type="html"><![CDATA[<p>When I began working at Artsy four years ago, remotely, I really didn't like the weekly engineering standup. I'd sit in front of my computer and strain to hear a dozen people gathered around a laptop with Google Hangout. They'd discuss implementation details for projects I wasn't familiar with, and then I'd do the same to them (our mobile team was still very separate from our web team). Twenty minutes would pass and I didn't feel like my work experience at Artsy had been enriched in any way.</p>
+
+<p>The first time I came to New York to visit the office – before moving here – I sat down with <a href="https://github.com/dylanfareed">Dylan</a> and <a href="https://github.com/orta">Orta</a>. Dylan ran the weekly standup, and Orta was also not a fan of the meeting. Dylan was clear: if the standup wasn't working for the two of us, then it wasn't working for anyone. So let's fix it together.</p>
+
+<!-- more -->
+
+
+<p>And we did. We installed new sound-baffling ceiling tiles to help remote workers hear the boardroom more clearly. We restructured updates, moving from individual updates to team updates. We introduced a section for people to ask and offer help. All kinds of changes. I started looking forward to standup.</p>
+
+<p>At Artsy, when you see something that could be improved about the way that we work, you are expected to help improve it. Dylan taught me that lesson, and I still take it to heart.</p>
+
+<p>Last summer, I started taking on more responsibilities for the Artsy Engineering team, including running the weekly standup meeting. It was previously run by a single engineer, <a href="https://github.com/craigspaeth">Craig</a>, who was juggling a lot of team-wide responsibilities. I was happy to help him out and run the meeting, but I had only replaced <em>myself</em> as a single-point-of-failure for standup; even with Orta running things sometimes, the process itself was still as brittle as when Craig was running things alone. After a few months, Orta and I decided to fix things.</p>
+
+<p>Our goal: fully automated standups. No single person should ever be a point-of-failure for our team. We moved through a few distinct steps.</p>
+
+<p>First, we had to document the process of running the standup. This was crucial: standups should be run as a function of the documentation, so that any engineer at Artsy can run an effective standup. The docs should not only help the engineer run the meeting, but help them feel <em>capable</em> of running the meeting. And once documentation is in place, anyone can help improve the docs (and consequently, improve the process). The current <a href="https://github.com/artsy/meta/blob/master/meta/open_standup.md">docs are open source</a>.</p>
+
+<p>Next, we had to get other engineers running the meeting. We split up the responsibilities of the meeting into two roles: a talking part, and a note-taking part. Both are integral, and different people gravitate towards differently roles. Splitting things up not only made running the meeting easier, but it made running the meeting more appealing to newcomers.</p>
+
+<p>Once the meeting was a two-person responsibility, we started bringing on other engineers to help. I would ask around to see who was interested in helping running a meeting, giving choice of role to the other person. After each meeting, I'd ask the person about how we could improve the docs. Each week, the docs got better and better.</p>
+
+<p>The next phase was moving to having standup run entirely by other engineers. I had a list of engineers who had never run a standup, and worked down the list to get as many engineers having run a meeting as possible. I made <a href="https://github.com/artsy/meta/pull/21">this pull request</a> making it clear that running the standup meeting is a responsibility that every member of the team <em>shares</em>.</p>
+
+<p>Eventually, I felt we were ready to move to a self-perpetuating standup. At the end of each standup, we would solicit volunteers to run next week's meeting. Fully-automated standups! We'd done it! Things were working, though we did recently decide to <a href="https://github.com/artsy/meta/pull/32">integrate the standup schedule into our new support on-call schedule</a>; the engineers beginning their rotation were responsible for running the standup. This eliminated the kind of awkward "okay who wants to do this next week?" part of our meeting.</p>
+
+<p>At each step, we improved the process. Through effective documentation and positive energy, we reduced the <a href="https://en.wikipedia.org/wiki/Bus_factor">bus factor</a> for our engineering team's management. And more importantly, I think, we made it clear to every Artsy engineer that managing our team and improving how we work is a responsibility we have, together.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Future Fridays]]></title>
+    <link href="http://artsy.github.io/blog/2015/12/22/future-fridays/"/>
+    <updated>2015-12-22T11:09:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2015/12/22/future-fridays</id>
+    <content type="html"><![CDATA[<p>Artsy's Platform engineering team is responsible for much of our shared infrastructure and services. Some of that responsibility is naturally focused on the very near term, such as diagnosing service interruptions and fixing bugs. However, we must regularly balance that with more long-term-focused work such as evaluating new technologies, paying off technical debt, and devising foundational improvements to our platform.</p>
+
+<p>This is a tricky balance! Near-term work is appealing. It's well-understood, more easily scoped, and often promises a satisfying "quick fix." Sometimes, there's even a customer (internal or external) eagerly awaiting the result. We recently introduced "Future Fridays" to help dedicate time to longer-term, open-ended work despite these urgent temptations.</p>
+
+<!-- more -->
+
+
+<a name="The.Rules"></a>
+<h2>The Rules</h2>
+
+<p>The rules are simple. Each Friday, we give ourselves permission to suspend our usual work. Instead, we zoom out and try to answer:</p>
+
+<ul>
+<li>What are the patterns emerging in our work--repeated smells or obstacles--that could be addressed at the root?</li>
+<li>What new technologies might we want to have in place 6, 12, or 18 months from now?</li>
+<li>What will we need to get to 10x the scale of data, traffic, or revenue?</li>
+</ul>
+
+
+<p>Finally, we try to share our goals and our results. This usually takes the form of a simple announcement in the team's chat room.</p>
+
+<p>Some examples of topics we've pursued:</p>
+
+<ul>
+<li>Migrating a slow, failure-prone component in our analytics stack to a more scalable data warehouse</li>
+<li>Learning a promising new programming language or framework</li>
+<li>Testing alternative continuous integration services</li>
+<li>Extracting email generation from our main API into a dedicated service</li>
+<li>Migrating to a more performant background queue</li>
+</ul>
+
+
+<a name="The.Results"></a>
+<h2>The Results</h2>
+
+<p>Future Friday has become a well-loved part of our weekly rhythm as a team.</p>
+
+<p>Throughout the week, we constantly wonder "what if..." (as teams like ours tend to do). Some of the more "out there" notions quickly enter the Future Friday parking lot. (We might even include a <em>#FF</em> hashtag for easy searching of chat transcripts.) And then we get back to solving the problem at hand.</p>
+
+<p>When Friday arrives, we have a list of ideas but must weigh their potential value and radically narrow their scope to fit the time constraint.</p>
+
+<a name="Tips"></a>
+<h2>Tips</h2>
+
+<p>Borrow some lessons from our Future Friday experiment:</p>
+
+<p><strong>Build a backlog.</strong> It took a few weeks to accumulate a healthy backlog of ideas that were both pertinent and exciting to individuals on the team. Start now!</p>
+
+<p><strong>Protect the time.</strong> It's tempting to keep pushing forward your regular work ("I'll just deploy that thing I was working on yesterday"), but Future Friday only works if you create some slack capacity. We suspend our usual stand-up meetings, expect that folks may decline meetings or be slower to respond, and <em>everyone</em> (including managers) participates.</p>
+
+<p><strong>Go your own way.</strong> Work on something you're excited about. Fridays are fun and productive when everyone explores something they're personally energized about (<em>not</em> just something their pointy-haired boss is excited about). As a result, each week's efforts are diverse (and sometimes, plain weird).</p>
+
+<p><strong>It's not "20% time."</strong> Fridays aren't totally open-ended. They're protected time for work that's relevant and valuable to the business, but with an explicitly longer time horizon.</p>
+
+<p><strong>Call it.</strong> Don't <em>pre</em>-judge ideas, but when something doesn't pass muster, share any lessons and move on. (E.g., a platform isn't fully baked, transition costs are too high, or results don't match hype.) The bar for <em>exploring</em> an idea is low on Friday, but our standard for <em>shipping</em> production software is not.</p>
+
+<p>To our surprise, though, often the result has been exactly the opposite. Given a few undisturbed hours of attention, some ideas quickly become feasible and even production-worthy. Even more projects have hatched into full-fledged, rest-of-the-week projects, using Future Friday to overcome an initial learning curve.</p>
+
+<p>Now, Future Friday is anticipated each week. We've gotten a head start on some projects that were daydreams a little while ago. And other teams have launched Future Fridays of their own.</p>
+
+<p>We hope you found our experiment interesting. Let us know your questions, and especially your own experiences, below!</p>
+
+<p>&nbsp;</p>
+
+<p>P.S. <a href="https://www.artsy.net/jobs">Artsy is hiring</a>.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Artsy's Engineering Compensation Framework]]></title>
+    <link href="http://artsy.github.io/blog/2015/04/03/artsy-engineering-compensation-framework/"/>
+    <updated>2015-04-03T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2015/04/03/artsy-engineering-compensation-framework</id>
+    <content type="html"><![CDATA[<p>Fair compensation is an important part of cultivating and growing engineers, and determining how much money someone is going to make is often more art than science, especially in young start-ups. We wanted this to be a collaborative process and not an adversarial one, and as our engineering team grew past 20 members it became important to think about compensation more systematically.</p>
+
+<p>In this post I will share our individual contributor engineering ladder and our performance evaluation and compensation process.</p>
+
+<!-- more -->
+
+
+<p>Performance evaluation at Artsy is composed of the <em>what</em>, i.e. what you achieve that contributes to your team’s goals and ultimately Artsy goals, and the <em>how</em>, i.e. how you act and how those actions  contribute to Artsy’s culture and values. The <em>what</em> part for an engineer is expressed in our individual contributor ladder, which describes typical growth from someone who has recently graduated, to an inspiring technologist. There's nothing typical to engineering in our team - we have more art degrees than computer science ones, and I find all our junior engineers incredibly inspiring. This ladder is a benchmark, not a formula - knowing what's typical helps team leads highlight the exceptional achievements and individuals to find themselves in a traditional growth path and figure out what their next step could be. It's also important to note that our ladder recognizes that individual contributors do not need to become team leads to make more money - individual contributors are the most important people at Artsy and there's no ceiling in their career here. We also are working on a company-wide system for team leads, but that's a subject for another post.</p>
+
+<p>We have devised 5 levels, much inspired by the excellent <a href="http://dresscode.renttherunway.com/blog/ladder">Rent-the-Runway's Engineering Ladder</a>. You'll find it at the end of this article.</p>
+
+<p>Armed with this list a team lead can have a good 1:1 conversation with a team member about where they are in their career in terms of pure performance, and what areas need be paid attention to in order to grow into the next level. Leads can also compare engineers that don't work on their teams using a consistent vocabulary.</p>
+
+<p>In parallel with working on this ladder, we did a lot of research regarding market compensation for Engineers. We routinely ask candidates questions about their pay and competitive offers, discuss this with  heads of engineering in other companies, use market data from large recruiting firms and pay attention to polls in the various technology organizations. We understand regional differences and have a good idea of the ranges that a company similar to Artsy pays individuals and constantly update our knowledge. If you run a team and would like to compare your numbers to ours, please e-mail <a href='mailto:db@artsy.net'>db@artsy.net</a>.</p>
+
+<p>A significant portion of your compensation comes in Artsy stock options. However, we do not assign dollar value to those or consider them to do compensation math, other than for the case when we offer you a range of possible salaries and a range of possible stock compensation. We often let you choose high equity and low cash, or low equity and high cash, which shifts down or up your target market value by the difference in dollars between your choice and fair market compensation. We determine the amount of stock options at the time of your joining and you may also receive subsequent grants with the goal of always providing you a fair amount of stock appropriate to your ladder at the moment of the grant.</p>
+
+<p>We review compensation every six months. And so, how do we determine your actual pay? We identify your ladder level, which yields your fair market value. Your lead then considers how you act and how those actions contribute to Artsy’s culture and values. This determines whether you are paid an amount that's market high, or maybe even above market, creating a good margin to work with for exceptional achievements, strong progress or impact outside of your primary responsibilities.</p>
+
+<p>We test our framework when making new offers by asking candidates what their compensation expectations are. Some will give a number above their fair market value and we'll offer them less. Some will give a number below their fair market value and we'll offer them more. You read that right - people are paramount at Artsy - we do make offers above what a candidate may be asking for, based on our data and compensation framework. But don't take our word for it, e-mail us your resume to <a href='jobs@artsy.net'>jobs@artsy.net</a>.</p>
+
+<a name="Individual.Contributor.Ladder"></a>
+<h3>Individual Contributor Ladder</h3>
+
+<a name="Engineer.1"></a>
+<h4>Engineer 1</h4>
+
+<ul>
+<li>Broad knowledge of CS concepts.</li>
+<li>Can complete well-defined and subdivided tasks.</li>
+<li>Focuses on learning tools and processes.</li>
+<li>Pushes code through the entire lifecycle from development to production for the first time.</li>
+<li>Develops individual contributor skills, including source control, editors or test-driven development.</li>
+</ul>
+
+
+<a name="Engineer.2"></a>
+<h4>Engineer 2</h4>
+
+<ul>
+<li>Consistently writes and delivers correct and clean quality code with guidance.</li>
+<li>Self-sufficient and makes steady progress on tasks.</li>
+<li>Knows when to ask for help and how to get unblocked.</li>
+<li>Makes steady, well-paced progress without the need for constant significant feedback from more senior engineers.</li>
+<li>Owns a small-to-medium feature from technical design through completion.</li>
+<li>Provides help and support outside of area under their responsibility.</li>
+</ul>
+
+
+<a name="Engineer.3"></a>
+<h4>Engineer 3</h4>
+
+<ul>
+<li>Owns a service or large technology component.</li>
+<li>Requires minimal direction or oversight, delivers quickly.</li>
+<li>Understands elements of the business that their work supports.</li>
+<li>Understands and makes well-reasoned design decisions and tradeoffs in their area.</li>
+<li>Works in other areas of the codebase with guidance from owners of that system.</li>
+<li>Persistent in the face of roadblocks, dispatches them efficiently, pulling in others as necessary.</li>
+<li>Has end-to-end responsibility on projects of increasing complexity and contributes to code shared across projects.</li>
+<li>Mentors junior engineers.</li>
+<li>Participates in the interviewing process of new team members.</li>
+<li>Demonstrates knowledge of industry trends, infrastructure and systems.</li>
+</ul>
+
+
+<a name="Engineer.4"></a>
+<h4>Engineer 4</h4>
+
+<ul>
+<li>Owns large scale and impact service or collection of services.</li>
+<li>Understands the Artsy business and makes decisions based on its direction.</li>
+<li>Sought out by other team members for technical guidance.</li>
+<li>Anticipates technical issues at the product level and makes architectural and design decisions to avoid them.</li>
+<li>Recognized as a prolific contributor to core and side projects.</li>
+<li>Multiplies the effectiveness of others by facilitating cross-team work.</li>
+<li>Has track record of creating sweeping improvements in stability, performance, and scalability across services.</li>
+<li>Consistently reduces the complexity of projects, services, and processes in order to get more done with less work.</li>
+<li>Has made an obvious positive impact on the entire company's technical trajectory.</li>
+<li>Sets short to medium-term strategic technical direction.</li>
+<li>Communicates the awesomeness of Artsy technology externally via talks and blog posts.</li>
+</ul>
+
+
+<a name="Engineer.5"></a>
+<h4>Engineer 5</h4>
+
+<ul>
+<li>Inspires engineers and is seen as a role model and mentor to every technical member of the team.</li>
+<li>Plays a key role in developing multi-year technology strategy for complete and critical areas of the business.</li>
+<li>Has organization-wide impact on architecture and technology solutions.</li>
+<li>Anticipates broad technical change and ensures Artsy is always ahead of the curve.</li>
+<li>Consistently delivers large systems involving one or more teams' contribution.</li>
+<li>Primarily acts as a multiplier by building systems, authoring tools, or introducing policies or patterns.</li>
+<li>Quickly breaks down complex problems into potential solutions, knowns, and unknowns.</li>
+<li>Creates architecture that enables many potential futures without knowing exactly what the future is.</li>
+<li>Leads the conversations internally about the direction of major areas of the technology.</li>
+<li>Identifies technology strategic growth opportunities that enable Artsy to grow as a business.</li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Hello World]]></title>
+    <link href="http://artsy.github.io/blog/2012/01/05/hello-world/"/>
+    <updated>2012-01-05T19:34:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2012/01/05/hello-world</id>
+    <content type="html"><![CDATA[<p>We've been building cool stuff at <a href="http://artsy.net">Artsy</a> and are looking forward to sharing all things tech with you.</p>
+]]></content>
+  </entry>
+  
+</feed>

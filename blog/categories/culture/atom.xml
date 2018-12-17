@@ -1,0 +1,550 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: culture | Artsy Engineering]]></title>
+  <link href="http://artsy.github.io/blog/categories/culture/atom.xml" rel="self"/>
+  <link href="http://artsy.github.io/"/>
+  <updated>2018-12-16T10:16:31+00:00</updated>
+  <id>http://artsy.github.io/</id>
+  <author>
+    <name><![CDATA[]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[The Hows and Whys of Pair Programming]]></title>
+    <link href="http://artsy.github.io/blog/2018/10/19/pair-programming/"/>
+    <updated>2018-10-19T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/10/19/pair-programming</id>
+    <content type="html"><![CDATA[<p><em>Why pair program? As new engineers join Artsy, we've been experimenting with different programming cultures - Yuki
+came from Pivotal Labs where they have a strong pair programming culture and introduced it at Artsy - it's been
+about a year and a half and we're all really loving the changes he's introduced.</em></p>
+
+<p><em>I asked Yuki if he'd pair program with me on a blog, post on Pair Programming, and this is it. He's going to
+dive into what pair programming is, why you should do it, what are good mental models to think about, the techniques
+you can use to make it work, what hardware you might need and how Yuki persuaded so many of us to start doing it
+more often.</em></p>
+
+<p>&mdash; Orta</p>
+
+<!-- more -->
+
+
+<a name="Why.pair.program."></a>
+<h2>Why pair program?</h2>
+
+<p>The idea of pair programming came from a very popular book called <a href="https://www.goodreads.com/book/show/67833.Extreme_Programming_Explained">Extreme Programming Explained: Embrace
+Change</a>. Code review has been a good practice in software development for decades. Many organizations have
+adopted it, but XP (Extreme Programming) literally takes this <strong>more extremely</strong> - what if the engineer sitting next
+to you is reviewing your code as soon as you write it? This requires two engineers to simultaneously pay attention
+to the code that's being written, discuss implementation details, and sometimes socialize. That's how pair
+programming was born.</p>
+
+<p>Pair programming seems as easy as it sounds, and to some extent that's true. However, with just a few key points
+you'll be able to make your pairing session much more valuable.</p>
+
+<p>To think about when pairing is most valuable, let's think about code review first. Modern software organizations
+have implemented a process where engineers send pull requests to get reviews on GitHub (or whatever tool your
+organization uses for reviewing code). This is a very powerful process, but most of us have probably experienced a
+situation where a pull request with <a href="https://github.com/artsy/reaction/pull/1114#discussion_r209354107">a very simple change created a very long discussion</a>. Sometimes
+that's because of your lack of context in the work you are doing. Sometimes it's because you are working on a
+system you are unfamiliar with. Your co-worker left a lot of comments on your pull request, and you had to push a lot
+of extra commits, or even re-wrote the entire pull request. That's when pairing becomes very valuable to your team.</p>
+
+<p>Another good example is on-boarding new hires. Coming from an agile consultancy and a photo-product company, I was
+nowhere close to an Art expert when I joined Artsy. This was the time I wanted to question not just technical
+questions, but also very basic questions about art. How do people find and purchase artworks? Who actually sells
+artworks? What is an art fair? And auctions? <a href="https://medium.com/artsy-blog/what-it-feels-like-to-work-in-a-supportive-environment-for-female-engineers-3c994a001007">Christina Thompson</a>, on the other hand, has been at
+Artsy for more than two years. She also has strong experience in agile software development and practices, including
+pair-programming. Naturally, we started pairing to familiarize myself both with the code base and basic knowledge
+about Art on my first week at Artsy.</p>
+
+<a name="When.not.to.pair.program."></a>
+<h3>When not to pair program?</h3>
+
+<p>This post is about pair-programming, so why even talk about when not to pair-program? Well, while it’s a powerful tool,
+it's not a silver bullet we can utilize to solve all software problems. As we all deal with complex, long-standing
+pull requests, there are also simple changes that don't require a lot of discussions. Occasionally, your pull request
+is very long because of a great number of deprecated method names. Sometimes, you and your pair both feel stuck because
+none of you have context or knowledge about what you are addressing. Whenever you are not feeling as productive as you
+think you should be, then you don’t have to pair. Sometimes it may make sense for two of you to do research
+individually and check in later to share findings and learnings. In an occasional case, even swapping a pair is also a
+good way to make the entire team more productive.</p>
+
+<p>So what is the key point that makes a pair-programming session successful? I believe pair-programming works best when
+there is a fair amount of knowledge gap between two people. One is coding and teaching simultaneously, and the
+other is reviewing and learning simultaneously. Here the crucial part is <em>teaching</em>. It is easy, especially for more
+seasoned developers, to ignore the opportunity to share thoughts and knowledge with new hires, losing productivity
+they could've gained by pairing. Joining a new company is always scary, and pair-programming with a new hire will
+reduce a lot of "I wasn't sure about X" moments new hires might have encountered. At the same time, as mentioned above,
+pair-programming is not a silver bullet. It is important to be able to use pair-programming as a tool in your toolbox
+to solve a particular issue in your engineering team.</p>
+
+<a name="What.You.ll.Need.to.Pair.Program"></a>
+<h2>What You'll Need to Pair Program</h2>
+
+<p>The minimum you need is a computer and the ability to communicate, but let's look at what an optimal pair
+programming setup looks like.</p>
+
+<a name="Offline"></a>
+<h3>Offline</h3>
+
+<p>If you and the other engineer are in the same physical space, then you should aim to have:</p>
+
+<ul>
+<li>One computer set up as a workstation.</li>
+<li>Two sets of keyboards, mice and monitors attached.</li>
+<li>A spare computer for researching on the side.</li>
+</ul>
+
+
+<p>This gives you the ability to iterate and switch responsibilities at the speed of thought. If you have the resources
+and space, then setting up a place where any 2 engineers can drop a laptop down and be productive instantly will
+reduce a lot of the setup friction.</p>
+
+<a name="Remote"></a>
+<h3>Remote</h3>
+
+<p>The minimum you would need in this case is a video chat system like Skype, Google Hangouts or Slack Calls. Given
+that all of these support screen sharing too, then you can easily replicate two people sitting next to each other
+with one computer.</p>
+
+<p>It's worth noting that remote pairing requires stable internet, and with high bandwidth. We've both had situations
+in the past where we've had to abort pairing sessions due to internet un-reliability.</p>
+
+<p>In the past, we used to use ScreenHero a lot, because of it's great support for multiple mice and keyboards, but
+<a href="https://slack.com/screenhero">ScreenHero was bought by slack</a> and those feature aren't available for everyone.</p>
+
+<p>A lot of our pairing is done via the built-in Slack screen sharing. There's a newcomer to the scene though!</p>
+
+<p><a href="https://visualstudio.microsoft.com/services/live-share">VS Code's LiveShare</a> gives you the ability to share an IDE: it can handle voice
+chat, sharing server ports and sharing terminal sessions with a very  minimal amount of setup.</p>
+
+<p>We wrote the initial draft of this post in-person, in an Artsy meeting room writing and talking in real-time.
+If you've not seen Live Share, we posted a video of a <a href="https://twitter.com/ArtsyOpenSource/status/1034555778210910209">workshop we ran</a> at Artsy on YouTube.</p>
+
+<a name="Attribution"></a>
+<h3>Attribution</h3>
+
+<p>One way to encourage pair programming is by providing insight to others about when you're working as a pair. A great
+technique for this is to use <a href="https://github.com/git-duet/git-duet/"><code>git-duet</code></a>. Git Duet is a tool which extends git to make it easy to share
+attribution among contributors. It does this by having a central list of people' emails, you set up a pairing
+session, then use <code>git duet-commit</code> to replace <code>git commit</code> and the attribution shared.</p>
+
+<p>You can get started with:</p>
+
+<pre><code class="sh">$ brew tap git-duet/tap
+$ brew install git-duet
+</code></pre>
+
+<p>You'll then need to set up a <code>~/.git-authors</code> file which is a map of people's names to emails:</p>
+
+<pre><code class="yml">pairs:
+  ot: Orta Therox; orta
+  af: Ash Furrow; ash
+  md: Matt Dole;
+email:
+  domain: artsymail.com
+email_addresses:
+  md: mdole7@gmail.com
+</code></pre>
+
+<p>The format for each pair is <code>[tag]: [Name]; [email-prefix]</code>. This works in combination with the <code>email:domain</code> as
+the default email address host for someone. So it would infer that Ash Furrow's email is <code>ash@artsymail.com</code>.
+If they've not set up that email yet, then you can use <code>email_addresses:</code> to provide overrides.</p>
+
+<p>Now your config is set up, you can start using it. In your terminal you can use <code>git duet ot af</code> to start a session
+with Orta and Ash.</p>
+
+<pre><code class="sh">~/d/p/a/j/a/metaphysics  $ git duet ot af
+
+GIT_AUTHOR_NAME='Orta Therox'
+GIT_AUTHOR_EMAIL='orta@artsymail.com'
+GIT_COMMITTER_NAME='Ash Furrow'
+GIT_COMMITTER_EMAIL='ash@artsymail.com'
+</code></pre>
+
+<p>Now you just have to remember to use <code>git duet-commit</code> instead of <code>git commit</code> for our work. If you forget, you can
+use <code>git duet-commit --amend</code> to overwrite the last commit with a duet commit instead.</p>
+
+<a name="Where.to.go.from.here."></a>
+<h2>Where to go from here?</h2>
+
+<p>Pair-programming is a fantastic way to collaborate. If your organization hasn't incorporated it yet, I would highly recommend doing so. At Artsy, we've been experimenting with pair-programming for quite a long time, but this is only the start. We haven't figured out the form of pair-programming that works best for us, and it'll probably never end (and it's a good thing). There are also a lot more to think about that didn't get into this blog post, such as mental model one should have while pairing and techniques that keep you focused. We will re-visit once we gain more feedback and iterate on our pairing process.</p>
+
+<p>If you're looking to find more resources on pair programming</p>
+
+<ul>
+<li>Joe Moore's <a href="http://remotepairprogramming.com/">Remote Pair Programming</a> is a great place to start. He's been working at Pivotal Labs for over a decade.</li>
+<li>Tuple’s <a href="https://tuple.app/pair-programming-guide/">Pair Programming Guide</a> is a good work in progress at centralizing a lot of information.</li>
+</ul>
+
+
+<!-- 
+Notes:
+
+- http://www.extremeprogramming.org/rules/pair.html -->
+
+
+
+
+<!-- Appendix
+  - Ways in which you can encourage more pairing?
+  - Techniques for introducing it into your team
+  - Good resources? Further reading
+  - Do we do it as much as we'd want?
+  - Mental model
+    - Remind your pair of what to work on
+    - Speak up while pairing
+    - Take breaks often
+    - Show appreciation
+  - Techniques
+    - driver and navigator
+    - ping-pong pairing
+  - What companies provides a good best examples?
+-->
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Engineering Highlights]]></title>
+    <link href="http://artsy.github.io/blog/2018/10/18/long-term-highlights/"/>
+    <updated>2018-10-18T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/10/18/long-term-highlights</id>
+    <content type="html"><![CDATA[<p>Engineering is an inherently long-term process. The Artsy engineering team has been around for 7 years, and that's
+quite a lot of time to get things done. We use software that keeps track of changes over time thanks to source
+control, but tools like git only help keep track of small passages of time. I want to keep track of events that
+could take months to ship.</p>
+
+<p>We've been doing a lot of long-term introspection as a team in 2018. Externally, this has been visible through
+things like opening our docs and creating our engineering principles. I'm expanding on this with an idea that I
+took from my work in building large open source projects: <a href="https://github.com/artsy/README/blob/master/culture/highlights.md#readme">Highlight docs</a>.</p>
+
+<!-- more -->
+
+
+<p>I've been the main contributor for <a href="https://danger.systems/">Danger</a> and <a href="https://github.com/danger/peril">Peril</a> for about three years, working mostly solo, and it can
+be hard to feel like you're actually getting things done. There's an infinite backlog of people's requests for
+improvements, and polite mentions of the flaws in your work. So, as a counter-balance it's nice to take stock of
+events you're proud of. I initially mocked this out as <a href="https://github.com/danger/peril/issues/235">an issue in the peril repo</a> but when I
+re-applied the idea to the whole of Artsy I used our existing open documentation repo <a href="https://github.com/artsy/README/"><code>artsy/README</code></a>
+instead.</p>
+
+<p>The core idea isn't complicated, however it's somewhat time-consuming and requires collaborators. I used the best
+method I know for getting a lot of people's attention: spamming slack threads asking folks what were some of their
+highlights. I used these to fuel the main arcs of the doc.</p>
+
+<p>A lot of the time, just starting something like this and putting some effort in up-front means others will start to
+participate. The trickiest part was finding the right definitive links for a particular event. Ideally we have open
+links (so people without private GitHub access (internally and externally) can enjoy them) but sometimes the right
+link is private and that's ok. It's not open source by diktat.</p>
+
+<p>Trying to find the right balance between an "Artsy" event vs an "Engineering" event can sometimes be a bit vague,
+but I like to believe that more is more. It's about pointing out important events, so more is always a net
+positive. With that in mind, here's a few of ours, the rest is a click away:</p>
+
+<p><a href="https://github.com/artsy/README/blob/master/culture/highlights.md#readme"><img src="/images/highlights/highlights.png"></a></p>
+
+<p>I think I'm going to make one of these with every new large scale project I work on, I kinda wish we had one for
+the Artsy iOS app now. Maybe I'm going to need to do that now. Ergh, this is what I get for writing blog posts.</p>
+
+<p>I'd love to see some other companies or OSS projects using this idea - let me know in the comments if you are!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Defining Our Engineering Guiding Principles]]></title>
+    <link href="http://artsy.github.io/blog/2018/08/22/engineering-guiding-principles/"/>
+    <updated>2018-08-22T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/08/22/engineering-guiding-principles</id>
+    <content type="html"><![CDATA[<p>The Artsy Engineering team recently underwent the process of defining our guiding principles; you can read through the pull request <a href="https://github.com/artsy/meta/pull/41">here</a> and the finished principles <a href="https://github.com/artsy/README/blob/master/culture/engineering-principles.md">here</a>. In this blog post, I'd like to use our experience of defining these to answer the following questions:</p>
+
+<ul>
+<li>Why define engineering guiding principles?</li>
+<li>What makes principles different from company values?</li>
+<li>How to define guiding principles?</li>
+</ul>
+
+
+<p>Let's dive in.</p>
+
+<!-- more -->
+
+
+<a name="Why.Define.Engineering.Principles."></a>
+<h2>Why Define Engineering Principles?</h2>
+
+<p>Artsy's CEO has a <a href="https://www.artsy.net/article/carter-cleveland-why-define-company-values">blog post</a> that discusses why you should define company values and, unsurprisingly, a lot of the same rationale applies to an engineering team's guiding principles. In summary:</p>
+
+<ul>
+<li>Undefined principles lead to cultural debt (similar to technical debt, but in terms of a team's culture).</li>
+<li>Defined values lead to greater empowerment (engineers feel safe making decisions on their own, based on the principles).</li>
+<li>Defined values reduce the risk of unconscious bias (we help our decisions get made consistently).</li>
+<li>Values are your brand (this is true for Artsy Engineering, but our <a href="https://github.com/artsy">contributions</a> to the software industry are also a significant part of brand).</li>
+</ul>
+
+
+<p>I think each of these reasons applies to defining guiding principles as well. Over the past four years, I've seen the Artsy Engineering team encounter situations related to the reasons outlined above and, while the company values have helped us navigate disagreement, they haven't been entirely satisfactory.</p>
+
+<p>The two biggest shortcomings of the values have been an <strong>inconsistent practice</strong> and a <strong>difficulty making team-based decisions</strong>.</p>
+
+<p>Artsy Engineering supports the business primarily through product teams, which each have their own responsibilities and KPIs. Over time, different teams have developed their own subculture. In earnest, I think this is really cool, but it <em>has</em> eventually led to two teams taking radically different approaches to similar problems, or even repeating work that another team is already working on.</p>
+
+<p>That missing consistency also led to difficulties making team-based decisions: how can teams make decisions <em>as a team</em> without having a clear set of guidelines with which to evaluate a decision? As I'll explain in the next section, the Artsy company values often left us without a clear answer.</p>
+
+<a name="What.Makes.Guiding.Principles.Different.from.Company.Values."></a>
+<h2>What Makes Guiding Principles Different from Company Values?</h2>
+
+<p>Artsy's <a href="https://github.com/artsy/README/blob/master/culture/what-is-artsy.md#artsy-values">five core values</a> are as follows:</p>
+
+<ul>
+<li>Art meets Science</li>
+<li>People are Paramount</li>
+<li>Quality Worthy of Art</li>
+<li>Positive Energy</li>
+<li>Openness</li>
+</ul>
+
+
+<p>Those have been an incredibly useful framework for guiding Artsy's growth, for three years now. They're good values. But they are <em>very</em> general, designed specifically to be inclusive of every member of, and every team in, our company.</p>
+
+<p>That can lead to challenges when applying the values to specific teams, including engineering. In our day-to-day work, the values can help guide our general actions (being positive in pull request reviews, for example), but lack the specifics necessary to drive decision-making on a team level. The values also sometimes conflict with one another, and navigating those conflicts is difficult without a set of down-to-Earth guiding principles.</p>
+
+<p>Let's take a look at an example. "Quality Worthy of Art" is a really great value – personally, it motivates me to build software that would be worthy of hanging in a studio or gallery. However, the process of <em>getting</em> to that quality is often very messy; we might try one approach, switch to another, ship with <code>TODO</code> comments left in, etc. Real artists ship, after all. When <a href="http://artsy.github.io/series/open-source-by-default/">developing software in the open</a>, which value wins? The openness value, or the quality value?</p>
+
+<p>Our CEO has encouraged the company to lean into these tensions and use them to grow and learn together, which was a motivating factor in defining our guiding principles.</p>
+
+<a name="How.to.Define.Guiding.Principles."></a>
+<h2>How to Define Guiding Principles?</h2>
+
+<p>This is a very tricky question, since so much of the answer for Artsy Engineering is specific to us at Artsy (your process will necessarily be different) and specific to our team <em>within</em> Artsy (engineers make up less than 15% of Artsy's employee headcount). Orta helped define the values by looking at <a href="https://www.objc.io/issues/22-scale/artsy/">artefact's of our mobile team's culture</a> (since our mobile team <em>did</em> have a strong culture) and by talking to engineers privately to ask them for input. That was only half the work, though.</p>
+
+<p>Orta opened <a href="https://github.com/artsy/meta/pull/41">the pull request</a> with the guiding principles that he had synthesized from past documentation and from conversations with engineers, but explicitly marked the PR as a work-in-progress. The values he had were a good starting point, but we iterated extensively on them. We also added many more that had been missed by Orta's starting work (we had to start somewhere, after all). The whole process took about two weeks, and I learned a lot about how other engineers work at Artsy.</p>
+
+<p>Most of my experience at Artsy has been engineering front-end systems, and through the process of defining these principles, I learned a lot about how our back-end engineers work. We don't always work in the same way (remember, tensions?) but I value those differences; we have so much to learn from each other! Now with the guidelines, I'll be able to appreciate the back-end perspective.</p>
+
+<hr />
+
+<p>So with all that said, what are the Artsy Engineering Guiding Principles? You can read the <a href="https://github.com/artsy/README/blob/master/culture/engineering-principles.md">current principles here</a> (they are a living set of guidelines), but the principles we decided on are:</p>
+
+<ul>
+<li>Open Source by Default</li>
+<li>Own Your Dependencies</li>
+<li>Incremental Revolution</li>
+<li>Being Nice is Nice</li>
+<li>Minimum Viable Process</li>
+<li>Leverage Your Impact</li>
+<li>De-silo Engineers</li>
+<li>Build for 10x</li>
+<li>Done Means Done</li>
+</ul>
+
+
+<p>I encourage you to read the document for explanations of what each of these mean.</p>
+
+<p>Day-to-day, I don't expect <em>that</em> much to change now that we have these defined. But the differences they make will be key to the longevity and growth of our engineering team's culture.</p>
+
+<p>Remember that earlier example of openness-vs-quality? That is answered explicitly by the principles. The principles are <em>actionable</em>, they are <em>specific</em>, and they are <em>ours</em>.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Open Source by Default: Docs]]></title>
+    <link href="http://artsy.github.io/blog/2018/08/21/OSS-by-Default-Docs/"/>
+    <updated>2018-08-21T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/08/21/OSS-by-Default-Docs</id>
+    <content type="html"><![CDATA[<p>Artsy is growing up. We have thousands of subscriber galleries paying 3 to 4 figure monthly fees. As we're starting
+to see a real market-fit, and have started to mature our organization. For example, this year we introduced product
+managers into our 8 year old company to help us figure out how to build the right things. We actually started having
+open headcount on Engineering again, for the first time <em>in years</em>.</p>
+
+<p>As a part of maturing, our team has really had to start considering how to make parts of our culture explicit
+instead of implicit. We have new, awesome folks wanting to understand why things are the way they are as well as
+folk who are raising up to new responsibilities only to find them completely un-documented.</p>
+
+<p>In-part, having a consistent team for so long hasn't made it worth the time to document things everyone knows, but
+growth is very happy to disrupt that balance. Now we're shipping documentation updates weekly, to all sorts of
+places. In trying to write an awesome document, which I'll cover later, I looked at how we had consolidated our
+documentation over the last few years, and saw that we had fragmented due the tensions around wanting to write
+publicly.</p>
+
+<p>This post covers that tension, and how we came about to the new docs setup.</p>
+
+<!-- more -->
+
+
+<a name="Fragmentation"></a>
+<h2>Fragmentation</h2>
+
+<p>Prior to today, we had 4 main repos for documentation:</p>
+
+<ul>
+<li>🔒 <code>artsy/potential</code> (2015) - Our onboarding repo, and general docs hub</li>
+<li><a href="https://github.com/artsy/mobile"><code>artsy/mobile</code></a> (2015) - The mobile team's repo</li>
+<li><a href="https://github.com/artsy/guides"><code>artsy/guides</code></a> (2016) - A place for standards and guides</li>
+<li><a href="https://github.com/artsy/meta"><code>artsy/meta</code></a> (2017) - Externally-facing docs for non-Artsy folk</li>
+</ul>
+
+
+<p>Now we have two:</p>
+
+<ul>
+<li>🔒 <code>artsy/potential</code> - Support docs, and private documentation</li>
+<li><a href="https://github.com/artsy/README"><code>artsy/README</code></a> - Documentation Hub, split into sections</li>
+</ul>
+
+
+<p>When we created potential, it started as an open repo with the focus of on-boarding information. Over time it's
+scope grew to cover more general team, repo and setup documentation. We ended up debating whether it should be a
+private repo instead though.</p>
+
+<p>The key arguments for closing it were:</p>
+
+<ul>
+<li>There are sensitive things we want to document</li>
+<li>We can to write about info which lives in other private repos with full context</li>
+<li>By making potential private we could have one, authoritative source of truth for Artsy engineering newcomers</li>
+</ul>
+
+
+<p>These are all great, reasonable arguments and so we made the repo private - but with hindsight, closing the repo
+split contributors to our documentation. For example, the mobile team split moved their documentation into separate
+repo the week potential was made private. The web team used the blog, or kept notes in a per-project basis.
+Culturally, potential was considered the domain of our platform team. The platform team had the most cross-cutting
+concerns, and were also the team with the strongest need for documenting private information like domain models,
+outages, system failures, server access details and contact details.</p>
+
+<p>By 2016, we had successfully <a href="https://github.com/artsy/README/blob/master/culture/engineering-principles.md#de-silo-engineers">de-silo'd</a> mobile engineering at Artsy via React Native, so the mobile team
+wasn't a centralized team with resources anymore. This meant that new docs shouldn't really live inside the
+artsy/mobile repo. The front-end teams had been using the blog posts and public gists to keep track of
+documentation, which isn't really a good pattern. GitHub gists get lost, and blog posts aren't living documents.</p>
+
+<p>This eventually caused enough dissonance that the front-end folk called it quits and started a new docs repo. Our
+discussion on what we want a GraphQL schema to look like definitely didn't fit in the <a href="https://github.com/artsy/mobile"><code>artsy/mobile</code></a> repo and
+we wanted to share it with the other GraphQL folk we were talking to, so having it in a private repo didn't make
+sense. We couldn't do editorial review against a gist, and we eventually just started a new documentation repo:
+<a href="https://github.com/artsy/guides"><code>artsy/guides</code></a>.</p>
+
+<p>Once we had a space, then new docs started coming. We documented the RFC process, and how to run retrospectives in
+the guides repo. As a guide on <em>how-to-do-x</em> - these all made sense. What didn't make sense was that we were
+regularly repeating ourselves when talking about Artsy Engineering to the public.</p>
+
+<p>There wasn't a good space for that in mobile nor guides, and so a new repo was created: <a href="https://github.com/artsy/meta"><code>artsy/meta</code></a>.</p>
+
+<p>Soon, this became the home of docs from anyone that preferred writing in the public. <a href="https://github.com/artsy/meta"><code>artsy/meta</code>'s</a> domain
+was vague enough that anyone could document any internal processes as being something externally facing. For example
+documentation on how to run <a href="https://github.com/artsy/README/blob/master/playbooks/running-lunch-and-learn.md#running-a-lunch--learn">our Lunch &amp; Learn</a>, or <a href="https://github.com/artsy/README/blob/master/events/open-standup.md#dev-team-standup-at-artsy">Open Stand-up</a>.</p>
+
+<a name="Open.Docs.by.Default"></a>
+<h2>Open Docs by Default</h2>
+
+<p>This came to an inflection point when I joined the platform team, and felt the need to write cross-team
+documentation that really didn't fit with of our existing domains for documentation. I believe in <a href="https://github.com/artsy/README/blob/master/culture/engineering-principles.md#leverage-your-impact">leveraging my
+impact</a>, so any time writing docs should be industry grade-stuff, not only available to those lucky enough to
+be in <a href="https://www.artsy.net/jobs#engineering">our GitHub org</a>.</p>
+
+<p>So I spent some time debating the merits of our current infrastructure for docs:</p>
+
+<pre><code class="diff">+ New folk know to start at artsy/potential
++ The platform team have a private space for writing any private details about architecture and security
++ The wiki is well used as a source for all information on our engineering support process
+- By having our primary source of docs being private, we fragmented into many sources
+- New people have to figure out what team may have wrote docs to guess where docs might be
+- The number of contributors is low to artsy/potential
+</code></pre>
+
+<p>I wanted to imagine what a world looked like where the docs were <a href="https://github.com/artsy/README/blob/master/culture/engineering-principles.md#open-source-by-default">open by default</a>. So, I consulted our
+friends in openness: <a href="https://buffer.com">Buffer</a>. I found that they had <a href="https://github.com/bufferapp/README"><code>bufferapp/README</code></a> - which looked an awful lot
+like what I was thinking.</p>
+
+<p>I wondered about if we moved Artsy to have an open space for the initial docs, and treated potential as it's private
+sidekick:</p>
+
+<pre><code class="diff">+ New folk know to start at artsy/README
++ We can migrate all sources of docs into one place
++ artsy/potential can still be used as a place for writing private details
++ Our methodology for docs aligns with our methodology for source code
++ By consolidating, we can improve working via scripts/tooling to make it feel good
+- It gives up on the idea that you can have a single source of documentation
+- You have to be a bit more cautious about what you write in docs
+- It's a bunch of work, and you have to deprecate a lot of docs and handle re-directs for URLs
+</code></pre>
+
+<p>I opted to use our <a href="https://github.com/artsy/README/blob/master/playbooks/rfcs.md">RFC process</a> to discuss the idea of splitting, yet consolidating, documentation. We talked
+about it for two weeks with some great points for and against. Mostly summed up above, but we also discussed the
+idea of moving private docs into <a href="https://www.notion.so/">notion.so</a>. We're still figuring out what the scope of notion is in</p>
+
+<p>The RFC passed and I started work on a new docs hub last weekend. It was a nice shallow task I could do to keep my
+mind busy. It'd been a hard week.</p>
+
+<p>I wasn't aiming to rock the boat, so I created a new private repo on GitHub ( turns out we were at our GitHub limit
+for private repos, so I <a href="https://github.com/artsy/node-artsy-licenses/">open sourced another</a> to give us a free private slot - hah ) and <a href="https://github.com/artsy/README/pull/1">made a PR</a>.
+This <a href="https://github.com/artsy/README/pull/1">artsy/README#1</a> outlined my thoughts on how the merge can work, and gave a chance for others to say "this
+doc shouldn't be public."</p>
+
+<p>I focused on making minimal changes, but on making sure that all docs were back up to date with whatever they were
+covering. However, I set up tooling like <a href="https://prettier.io">prettier</a>, <a href="https://github.com/typicode/husky#husky---">commit-hooks</a> for tables of contents and <a href="https://danger.systems">danger</a> to
+make life easier for anyone wanting to make larger changes, see the <a href="https://github.com/artsy/README/blob/master/CONTRIBUTING.md"><code>CONTRIBUTING.md</code></a>.</p>
+
+<p>Once the opening PR was merged, I converted the repo to be public, sent off PRs closing <a href="https://github.com/artsy/meta/pull/45">meta</a>, <a href="https://github.com/artsy/guides/pull/8">guide</a>
+and <a href="https://github.com/artsy/mobile/pull/106">mobile</a>, then marked them as archived, and started debating how to announce that this happened. What
+better form than a blog post? So I started writing:</p>
+
+<blockquote><p>Artsy is growing up. We have
+thou<img src="/images/ossdocs/small_blinking_text_cursor_by_neripixu-d6lwqe9.gif" height=28 width=4 style="width:4px; margin:0; top:5px; margin-left:2px;"></p></blockquote>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[My First Week On Call]]></title>
+    <link href="http://artsy.github.io/blog/2018/05/30/my-first-week-on-call/"/>
+    <updated>2018-05-30T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/05/30/my-first-week-on-call</id>
+    <content type="html"><![CDATA[<p>As I write this, I have completed my first ever engineering on-call rotation at Artsy, so naturally I had to write a blog post about some of the things I learned.</p>
+
+<!-- more -->
+
+
+<p>A year ago, I would have been terrified to be one of two engineers responsible for handling everything from re-sending automated emails to fixing total site outages, but <a href="https://ashfurrow.com/blog/perspective-of-the-polyglot/">I have grown a lot</a> so being on-call was only <em>regular</em>-level intimidating. And indeed, with supportive documentation and a good partner, I didn't experience any situations where I felt truly lost about what to do next.</p>
+
+<p>But I did learn a few things. So let's discuss a few things that weren't immediately obvious to me.</p>
+
+<a name="Ignore.My.Instinct.to.Fix.Things.Right.Away"></a>
+<h2>Ignore My Instinct to Fix Things Right Away</h2>
+
+<p>This sounds really counterintuitive, right? I mean, a server is down, let's reboot it so it's up again! It's got a little red X next to it in AWS, let's make it a green checkmark again! I want that checkmark!</p>
+
+<p>But that's not always the best course of action. Sometimes, fixing something right away would deprive us of the opportunity to figure out <em>why</em> it broke in the first place. For example: we had Rails servers running out of disk space, and rebooting those servers would have refreshed their drives and fixed the problem, but one of our platform engineers asked me to wait so they could ssh in and examine the contents of the filesystems. In the mean time, the load balancer had already routed traffic around the servers, so there was no need to rush to fix anything.</p>
+
+<p>My instinct to fix things right away was at odds with the team's desire to understand why something broke.</p>
+
+<a name="What.is.an.Incident..Even."></a>
+<h2>What is an Incident, Even?</h2>
+
+<p>One thing became really clear to be, really quickly: people have many different, valid perspectives on what an "incident" is. Our support documentation goes into detail about what our responsibilities as on-call engineers are responsible for, and what should be routed through product teams to be prioritized, but my support partner and I still hit cases where we weren't quite sure if we should take action.</p>
+
+<p>Sometimes, issues of critical importance were brought to our #incidents Slack channel, but weren't <em>really</em> incidents, from an Engineering perspective. We erred on the side of helping our colleagues, but it's difficult. I want to help people! But I also have responsibilities. Balancing the two is a skill every engineer has to develop, and being on-call highlighted the importance of balance in a new way for me.</p>
+
+<p>My first ever jobs were retail, where I helped rural Canadians learn to use their first ever cell phones, and IT helpdesks; both taught me how to handle support requests in a way that makes the other person feel like things are going to be okay. I had to reapply those skills when on-call because sometimes what people were bringing to my attention fell outside the scope of an "incident". Consider the response:</p>
+
+<blockquote><p>What you've reported isn't an incident, talk to your PM.</p></blockquote>
+
+<p>... and contrast it with:</p>
+
+<blockquote><p>This falls outside the scope of immediate support, so I've opened a ticket for you. You can talk to the team PM about prioritization.</p></blockquote>
+
+<p>This kind of reply also aligns with Artsy's <a href="https://github.com/artsy/meta/blob/master/meta/what_is_artsy.md#artsy-values">values</a> of <strong>Positive Energy</strong> and <strong>People are Paramount</strong>. Everyone working at Artsy is here to make art a bigger part of culture, and that shared understanding helped.</p>
+
+<a name="We.Need.to.Improve.our.Automated.Alerts"></a>
+<h2>We Need to Improve our Automated Alerts</h2>
+
+<p>For a few months now, Artsy Engineering has been discussing how to consolidate our automated alerts. I somehow got it in my head that anything in our #alerts channel needed immediate engineer attention, when in fact, our #alerts channel is often noisy. By the final day of my rotation, I learned that not everything needed immediate attention.</p>
+
+<p>That's a bit of a problem. There are alerts that need immediate intervention ("the API servers are all down") and there are alerts that need no intervention ("this server is responding slowly, oh wait, it's back to normal, never mind"), and then there are the tricky ones: the ones that need <em>eventual</em> intervention ("gosh, our image processing API out of disk space for the third time in a month, we need to look into that"). Figuring out how to sort mid-level, important-but-not-urgent automated alerts from critical ones will be a critical part of our long-term support process.</p>
+]]></content>
+  </entry>
+  
+</feed>

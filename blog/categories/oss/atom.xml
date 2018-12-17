@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: oss | Artsy Engineering]]></title>
+  <link href="http://artsy.github.io/blog/categories/oss/atom.xml" rel="self"/>
+  <link href="http://artsy.github.io/"/>
+  <updated>2018-12-16T10:16:31+00:00</updated>
+  <id>http://artsy.github.io/</id>
+  <author>
+    <name><![CDATA[]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Open Source FAQ for Engineers]]></title>
+    <link href="http://artsy.github.io/blog/2017/01/04/OSS-FAQ/"/>
+    <updated>2017-01-04T12:17:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2017/01/04/OSS-FAQ</id>
+    <content type="html"><![CDATA[<p>We have a lot of Open Source code. For engineers without considerable experience in the open source realm, understanding some of the copyright issues around code ownership can be tricky. I've been working with our CTO <a href="http://artsy.github.io/author/db/">dB.</a>, and our senior counsel <a href="http://www.theartgorgeous.com/yayoi-shionoiri/">Yayoi Shionoiri</a> on creating an open-source FAQ for engineers.</p>
+
+<a name="What.is.Open.Source."></a>
+<h3>What is Open Source?</h3>
+
+<p>Open Source code is code that can be freely examined, used, adapted, and shared by all through a license that sets forth these principles.  The only potential limitation that an Open Source license is likely to impose is that future copies of the code (whether in adapted or un-adapted form) be themselves licensed in a manner consistent with the original license.  At Artsy, we are committed to making our engineering work <a href="http://code.dblock.org/2015/02/09/becoming-open-source-by-default.html">Open Source by default</a>.  A list of our Open Source projects can be <a href="http://artsy.github.io/open-source/">found here</a>.</p>
+
+<!-- more -->
+
+
+<a name="What.is.Open.Source....by.default...."></a>
+<h3>What is Open Source “by default”?</h3>
+
+<p>Open Source “by default” means that new projects are started or eventually become Open Source, unless keeping them proprietary represents a significant competitive advantage.</p>
+
+<a name="What.are.the.advantages.to.Open.Source.code."></a>
+<h3>What are the advantages to Open Source code?</h3>
+
+<p>Keeping our engineering work Open Source by default allows us to be a thought leader,  attracts and retains the best talent, and also is a great way to produce high quality work -- in other words, it helps to drive and sustain our Quality Worthy of Art, Openness, and People are Paramount values.  However, not everything is or should be Open Source. There <a href="https://www.objc.io/issues/22-scale/artsy/">are many great reasons</a> to be open, but it’s not a catch all.</p>
+
+<a name="How.does.Open.Source.interact.with.Copyright."></a>
+<h3>How does Open Source interact with Copyright?</h3>
+
+<p>Very generally speaking, copyright is the body of law that governs how Artsy upholds its ownership rights over code that an Artsy engineer creates as part of their duties as an Artsy employee, and Open Source describes the way in which Artsy shares this code with the rest of the world.  Put in another way, Artsy engineers develop code as "work for hire" to Artsy, and Artsy shares this code with specific usage and distribution terms through a license attached to it.</p>
+
+<a name="What.s.Inbound.Open.Source.code.vs..Outbound.Open.Source.code."></a>
+<h3>What's Inbound Open Source code vs. Outbound Open Source code?</h3>
+
+<p>Inbound Open Source code refers to the use of third party code under an Open Source license for Artsy's products.  Outbound Open Source code refers to the publication of Artsy code.</p>
+
+<p>When we publish Outbound Open Source code, as mentioned before, Artsy has a right to do so because we have the copyright to this code.  We give third parties the right to use the code usually through <a href="https://github.com/artsy/eigen/blob/master/LICENSE">this  type</a> of broad license (<a href="https://tldrlegal.com/license/mit-license">MIT</a>).  (For more on code licenses, see <a href="http://artsy.github.io/blog/2015/12/10/License-and-You/">Orta’s talk on code licenses</a>.</p>
+
+<a name="What.is.the.credit.on.Artsy.s.Open.Source.code."></a>
+<h3>What is the credit on Artsy's Open Source code?</h3>
+
+<p>For Inbound Open Source code, we usually credit the work of external engineers by conforming to their license, and providing attribution inside each source base.  This tends to be generated automatically by project tools, and rarely needs specific attention.</p>
+
+<p>For Outbound Open Source code, we usually credit the work of our Artsy engineers by using attribution changelogs, and by assigning an engineer as a point person for a project.</p>
+
+<a name="How.can.I.use.Open.Source.code.at.Artsy."></a>
+<h3>How can I use Open Source code at Artsy?</h3>
+
+<p>When we use Inbound Open Source code, we should always check to ensure that there are no third parties who may have an exclusive right over this code before we include it in our own work.  We should also use standard tools for handling Open Source code to ensure that we comply with the licenses attached to such code.  We do not use code with viral licenses (for e.g., GPL License) or  <a href="https://opensource.org/licenses/">non-OSI approved licenses</a> (for e.g., WTFPL license).</p>
+
+<a name="How.do.I.Open.Source.a.new.project.at.Artsy."></a>
+<h3>How do I Open Source a new project at Artsy?</h3>
+
+<p>When creating a new project at Artsy, you must include a license.  We use the <a href="https://opensource.org/licenses/MIT">canonical copy</a> of the MIT license with the copyright holder as shown below.  Ideally, you should ensure that it starts off with a README, continuous integration set up, linters, tests and documentation.</p>
+
+<a name="How.can.I.Open.Source.an.existing.project.at.Artsy."></a>
+<h3>How can I Open Source an existing project at Artsy?</h3>
+
+<p>When Open Sourcing existing projects, it's best practice to announce it to the development (and related product teams) and ensure that there is ample time for discussion before moving it.  For example <a href="http://artsy.github.io/blog/2016/09/06/Milestone-on-OSS-by-Default/">see how we migrated the artsy.net</a> website.</p>
+
+<a name="How.does.Artsy.think.about.Artsy.Projects.versus.Personal.Projects."></a>
+<h3>How does Artsy think about Artsy Projects versus Personal Projects?</h3>
+
+<p>Engineers have the ability to determine whether work they do is uniquely for Artsy during Artsy work hours (an "Artsy Project") or is a project created on their own time but can be applied and shared with Artsy (a "Personal Project").  If you have questions about whether a particular project should be an Artsy Project or a Personal Project, please discuss with your manager.</p>
+
+<p>From an external consumer’s perspective, the end result is generally the same as the license by which these code is released should not change.</p>
+
+<p>Examples are found below:</p>
+
+<table>
+<thead>
+<tr>
+<th>Artsy Project </th>
+<th> Personal Project </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>Copyright:</em> Art.sy, Inc., 2017 </td>
+<td> <em>Copyright:</em> [Developer], Art.sy, Inc., 2017</td>
+</tr>
+<tr>
+<td>Example: <a href="https://github.com/artsy/energy/blob/master/LICENSE#L1">Energy</a> </td>
+<td> Example: <a href="https://github.com/orta/ORStackView/blob/master/LICENSE#L1">ORStackView</a></td>
+</tr>
+</tbody>
+</table>
+
+
+<hr />
+
+<p>I'd like to personally thank <a href="http://gilyehuda.strikingly.com">Gil Yehuda</a> of Yahoo! for answering a lot of our questions, you really helped. For Artsy staff, you can get the living document at the <a href="https://sites.google.com/a/artsymail.com/intranet/team-pages/engineering">Engineering page on Artsy Atlas</a>.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Learn Swift at Artsy, Beginners Lesson Three]]></title>
+    <link href="http://artsy.github.io/blog/2016/08/30/swift-at-artsy-beginners-lesson-three/"/>
+    <updated>2016-08-30T09:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2016/08/30/swift-at-artsy-beginners-lesson-three</id>
+    <content type="html"><![CDATA[<p>And we're back! With lesson three of the beginners' Swift-at-Artsy course. To recap, Orta and I <a href="http://artsy.github.io/blog/2016/01/26/swift-at-artsy/">led a course at Artsy</a> to teach our colleagues Swift <em>last</em> August, and we're doing it again. I'm leading the stream for people who've never programmed before.</p>
+
+<p>Yesterday was lesson three and I have a <a href="https://youtu.be/e2ErzD8ibG8">screen recording</a> of my walkthrough of <a href="https://github.com/artsy/Swift-at-Artsy/tree/master/Beginners/Lesson%20Three">the material</a>.</p>
+
+<!-- more -->
+
+
+<p></div></div><iframe width='100%' height='600' src='https://www.youtube.com/embed/e2ErzD8ibG8 ' frameborder='0' allowfullscreen></iframe><div class='meta-container'><header>&nbsp;</header></div><div class='content-container'><div class='entry-content'></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Learn Swift at Artsy, Beginners Lesson Two]]></title>
+    <link href="http://artsy.github.io/blog/2016/08/23/swift-at-artsy-beginners-lesson-two/"/>
+    <updated>2016-08-23T09:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2016/08/23/swift-at-artsy-beginners-lesson-two</id>
+    <content type="html"><![CDATA[<p>And we're back! With lesson two of the beginners' Swift-at-Artsy course. To recap, Orta and I <a href="http://artsy.github.io/blog/2016/01/26/swift-at-artsy/">led a course at Artsy</a> to teach our colleagues Swift <em>last</em> August, and we're doing it again. I'm leading the stream for people who've never programmed before.</p>
+
+<p>Yesterday was lesson two and I have a <a href="https://youtu.be/EBtzqx1YRBg">screen recording</a> of my walkthrough of <a href="https://github.com/artsy/Swift-at-Artsy/tree/master/Beginners/Lesson%20Two">the material</a>.</p>
+
+<!-- more -->
+
+
+<p></div></div><iframe width='100%' height='600' src='https://www.youtube.com/embed/EBtzqx1YRBg ' frameborder='0' allowfullscreen></iframe><div class='meta-container'><header>&nbsp;</header></div><div class='content-container'><div class='entry-content'></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Learn Swift at Artsy, Beginners Lesson One]]></title>
+    <link href="http://artsy.github.io/blog/2016/08/15/swift-at-artsy-beginners-lesson-one/"/>
+    <updated>2016-08-15T21:18:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2016/08/15/swift-at-artsy-beginners-lesson-one</id>
+    <content type="html"><![CDATA[<p>Last August, Orta and I <a href="http://artsy.github.io/blog/2016/01/26/swift-at-artsy/">led a course at Artsy</a> to teach our colleagues Swift. There were two parallel groups of learners: a "beginners" group who had never coded before, and an "informed" group who already knew how to code. This year, we're leading the course again with a slight twist: we're repeating the course for absolute beginners, and we're introduce a new course for anyone who completed last year's beginner course.</p>
+
+<p>We're really excited both to help new colleagues take their first steps into programming, and to help returning colleagues continue their journey.</p>
+
+<p>Today was lesson one of the beginner group, and I have a <a href="https://youtu.be/OLdSg0XpFqA">screen recording</a> of my walkthrough of <a href="https://github.com/artsy/Swift-at-Artsy/tree/master/Beginners/Lesson%20One">lesson one's material</a>.</p>
+
+<!-- more -->
+
+
+<p></div></div><iframe width='100%' height='600' src='https://www.youtube.com/embed/OLdSg0XpFqA ' frameborder='0' allowfullscreen></iframe><div class='meta-container'><header>&nbsp;</header></div><div class='content-container'><div class='entry-content'></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Handling Large OSS Projects Defensively]]></title>
+    <link href="http://artsy.github.io/blog/2016/07/03/handling-big-projects/"/>
+    <updated>2016-07-03T12:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2016/07/03/handling-big-projects</id>
+    <content type="html"><![CDATA[<p>I help maintain big OSS projects: from a third-party <a href="https://cocoapods.org">dependency manager</a> used in most iOS apps (<a href="https://github.com/CocoaPods/cocoapods.org">CocoaPods</a>), to the most popular Objective-C <a href="http://cocoapods.org/pods/Specta">testing framework</a> and the most popular Swift <a href="http://cocoapods.org/pods/Moya">networking API client</a>. I've been doing this for years.</p>
+
+<p>Projects with this much impact are big time-sinks. This time comes from ensuring infrastructure continues to work, support tickets need replies, new code needs reviewing and releases need coordinating.</p>
+
+<p><img src="/images/2016-07-03-big-oss/danger_logo_black@2x.png" alt="" /></p>
+
+<p>Last September, almost a year ago, I started work on a new project, <a href="https://github.com/danger/danger/">Danger</a>. Danger fixes a problem we were seeing in the Artsy mobile team around adding "<a href="https://github.com/artsy/mobile/issues/31">process</a>" to our team.</p>
+
+<p>As a part of discussing Danger internally, I've referenced that building CocoaPods has greatly influenced Danger. This blog post is about the way I've built Danger, knowing fully well that I cannot afford the level of time to maintain it at the scale it may get to.</p>
+
+<!-- more -->
+
+
+<hr />
+
+<p>Danger is a project that could end up with a lot more users than CocoaPods. So I want to be cautious about how I create the community around Danger. If you're interested in some of the baseline setup required to run a popular project, the post "<a href="https://ashfurrow.com/blog/building-popular-projects/">Building Popular Projects</a>" by <a href="/author/ash">Ash</a> is a great place to start, this builds on that.</p>
+
+<p>My maintenance time on CocoaPods resolves around:</p>
+
+<ul>
+<li>Handling new issues</li>
+<li>Keeping infrastructure running</li>
+<li>Requests around user data</li>
+<li>Keeping disparate communities together</li>
+</ul>
+
+
+<a name="Issues"></a>
+<h2>Issues</h2>
+
+<p>From the ground up, Danger could not end up as complex as CocoaPods, the domain they cover is different and CocoaPods sits atop of an annually moving (and <em>somewhat</em> hostile) <a href="https://developer.apple.com/news/">platform</a>.</p>
+
+<p>However, get enough people using a product and you end up with three types of issues: Bug Reports, How Do I X? and Feature Requests.</p>
+
+<p>I wanted to keep bug-reports down, as much as possible, and so I built a system wherein the default error reporting system would also search GitHub issues <a href="https://github.com/orta/gh_inspector">for similar problems</a>. Knowing this was a generic problem, I built it with <a href="https://github.com/fastlane/fastlane/releases/tag/1.96.0">other</a> <a href="https://github.com/CocoaPods/CocoaPods/pull/5421">large</a> ruby projects in mind too.</p>
+
+<p><code>How do I X?</code> are issues that haven't appeared much on Danger. For CocoaPods we request people use the CocoaPods tag on StackOverflow. That saves us from 5 to 6 issues a day, and provides others a great place to get internet points by responding instead.</p>
+
+<p>Feature Requests issues are always fascinating, it gives you a chance to really see the difference between what you imagined a project's scope is, and how others perceive it. One thing that helps here is that Danger has a <a href="https://github.com/danger/danger/blob/master/VISION.md">VISION.md</a> file. This helped vocalise a lot of internal discussion, and let contributors understand the roadmap:</p>
+
+<blockquote><p>The core concept is that the Danger project itself creates a system that is extremely easy to build upon. The codebase for Danger should resolve specifically around systems for CI, communication with Peer Review tools and providing APIs to Source Control changes. For example: Travis CI - GitHub - git.</p></blockquote>
+
+<p>As well as providing a heuristic for determining whether something should be added to Danger:</p>
+
+<blockquote><p>This means that decisions on new code integrated into Danger should ask "is this valid for every CI provider, every review system and source control type?" by making this domain so big, we can keep the core of Danger small.</p></blockquote>
+
+<a name="Infrastructure"></a>
+<h3>Infrastructure</h3>
+
+<p>CocoaPods has about 6 web properties, 3 of which are critical. The others can go down, or be behind the Xcode update schedules and people's projects will work fine. The 3 the critical projects are all simple, focused projects: <a href="https://github.com/CocoaPods/trunk.cocoapods.org">trunk</a> (provide auth, and submitting new libraries) <a href="https://github.com/CocoaPods/cocoapods.org">cocoapods.org</a>, and <a href="https://github.com/CocoaPods/search.cocoapods.org">search</a>. We control everything there.</p>
+
+<p>Meanwhile the less critical ones like <a href="https://github.com/CocoaPods/cocoadocs.org">cocoadocs.org</a> have dependencies all over the show: AppleDoc, CLOC, Xcode, Carthage, Jazzy - every one of these can, and has, been a source of unreliability for infrastructure that I maintain.</p>
+
+<p>With Danger, I wanted to avoid building any infrastructure that does not sit on top of solid, mature projects. The website is statically created in <a href="https://middlemanapp.com">Middleman</a>, using <a href="https://rubygems.org/gems/slim">boring</a> <a href="https://rubygems.org/gems/sass">old</a> technology, this means no server to host.</p>
+
+<p>To support dynamic content on the website, I have a rake command to use <a href="https://rubygems.org/gems/yard/versions">a decade old</a> documentation formatter to pull content from a <a href="https://en.wikipedia.org/wiki/RubyGems">13 year old</a> dependency manager - that lets others describer their project's. In order to let them keep it up to date, I have a tiny 35 line web-server that allows specific projects to trigger a new CI build.</p>
+
+<a name="Plugins"></a>
+<h3>Plugins</h3>
+
+<center>
+<blockquote class="twitter-tweet" data-lang="en-gb"><p lang="en" dir="ltr">Summary of every big OSS project. Monolith -&gt; Plugin support.<a href="https://t.co/7x4vuW4bRd">https://t.co/7x4vuW4bRd</a></p>&mdash; Orta Therox (@orta) <a href="https://twitter.com/orta/status/748561323164864512">30 June 2016</a></blockquote> <script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+</center>
+
+
+<p><br/></p>
+
+<p>It's almost inevitable that once a project becomes big, maintainers have to become a lot more conservative about how they introduce new code. You become good at saying 'no', but a lot of people have legitimate needs. So, instead you end up converting your tool into a platform.</p>
+
+<p>Some of the most interesting ideas in the CocoaPods ecosystem come from plugins.</p>
+
+<p>I wanted plugins to be a first class citizen within Danger from day one. It's in the <a href="https://github.com/danger/danger/blob/master/VISION.md">VISION</a> file, and it's applied into how I've designed a lot of the user-facing site. I was <a href="https://github.com/danger/danger/issues/74">torn</a> after a few months of development <a href="https://github.com/danger/danger/pull/156#issuecomment-205907128">where things</a> should go. Now the core of Danger is <a href="https://github.com/danger/danger/pull/227">built as plugins</a>.</p>
+
+<a name="Documentation"></a>
+<h3>Documentation</h3>
+
+<p>My second big project on CocoaPods was collating documentation and scoping different types of documentation. In CocoaPods I ended with:</p>
+
+<ul>
+<li><strong>Highlight pages</strong> (intro pages, app pages, team pages)</li>
+<li><strong>Guides</strong> (tutorials, overviews, FAQs)</li>
+<li><strong>Reference</strong> (Command-line interface, APIs for developers)</li>
+</ul>
+
+
+<p>These 3 buckets for documentation makes it pretty easy to separate where people should look depending on what they're looking for. This pattern I'm stealing outright for Danger. Just not quite yet, it's a blocker on 1.0 though.</p>
+
+<p>One trick I took from CocoaPods is to have as much documentation as possible generated from the source code. With Danger, all of the work that's gone into documenting the code is turned into public API documentation for end-users. This makes it really easy to ensure it's consistent and up-to-date. The same tools used to generate documentation for Danger are used for plugins. Any improvements there helps everyone.</p>
+
+<a name="User.Data"></a>
+<h2>User Data</h2>
+
+<p>Not storing any, phew! Though if <a href="https://github.com/danger/danger/issues/42">Danger as a Service</a> happens, then it will.</p>
+
+<a name="People"></a>
+<h2>People</h2>
+
+<p>People are hard, Ash said in <a href="https://ashfurrow.com/blog/building-popular-projects/">Building Popular Projects</a>:</p>
+
+<blockquote><p>The biggest existential threat to your library is this: you get burned out and stop working on it – and no one else contributes to it –</p></blockquote>
+
+<p>Understanding motivations, encouraging ownership and accommodating multiple viewpoints are vital parts of anyone who wants to make a project bigger than themselves. There <a href="https://github.com/danger/danger/graphs/contributors">are lots of times</a> when I'm not the lead developer on Danger.</p>
+
+<p>I owe a lot of this to the policy Ash and I created with Moya, the wordy "<a href="https://github.com/Moya/contributors">Moya Community Continuity Guidelines</a>" which define the expectations of the maintainers of a project towards contributors.</p>
+
+<p>It's helped let a lot of other contributors make an impact. In the future, I hope those are the people that I get to hand Danger off to. Danger is bigger than me.</p>
+
+<hr />
+
+<p>Maintaining big projects is a learned activity, for most people it's a spectator sport, but it's not too hard to jump from writing issues to helping out. It's how I ended up contributing to CocoaPods.</p>
+]]></content>
+  </entry>
+  
+</feed>

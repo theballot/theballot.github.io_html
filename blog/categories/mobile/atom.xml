@@ -1,0 +1,839 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: mobile | Artsy Engineering]]></title>
+  <link href="http://artsy.github.io/blog/categories/mobile/atom.xml" rel="self"/>
+  <link href="http://artsy.github.io/"/>
+  <updated>2018-12-16T10:16:31+00:00</updated>
+  <id>http://artsy.github.io/</id>
+  <author>
+    <name><![CDATA[]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Deploying your app on a weekly basis via fastlane + Travis CI]]></title>
+    <link href="http://artsy.github.io/blog/2017/07/31/fastlane-travis-weekly-deploys/"/>
+    <updated>2017-07-31T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2017/07/31/fastlane-travis-weekly-deploys</id>
+    <content type="html"><![CDATA[<p>We have a few apps now, but one of them isn't really used by anyone other than developers. This is <a href="https://github.com/artsy/emission/tree/master/Example">our React Native host app</a>. We built our React Native components <a href="/blog/2016/08/24/On-Emission/">as a library</a> to be consumed by our other apps. Our development environment for these components is a unique app that acts as a host for the React Native components. It's effectively a long tableview.</p>
+
+<p>This app is often updated for developers, but never deployed to beta users inside Artsy. So I automated it. Using Travis CI and fastlane. This post covers how I got that set up.</p>
+
+<!-- more -->
+
+
+
+
+<center>
+  <img src="/images/fastlane-weekly/screenshot.png" width=300>
+</center>
+
+
+<p>As the JavaScript is continuously deployed, the native side of the app rarely gets a deploy. In order to ensure an up-to-date version of the app, I used the <a href="https://docs.travis-ci.com/user/cron-jobs/">scheduler</a> now available in Travis CI, and Circle CI. This is a perfect use-case for one-off tasks like uploading an app to Apple's Testflight on a weekly basis.</p>
+
+<p>I wanted this to exist outside of our current CI environment for two reasons:</p>
+
+<ul>
+<li>Our CI is already <a href="https://github.com/artsy/emission/pull/263">using AppHub</a> to deploy the JavaScript parts of our React Native on a per-commit basis. It's complicated enough as it is, without adding a lot more process.</li>
+<li>Our CI is currently running on Linux boxes, and so everything is fast and stable. Deploying using the main repo would force us to use macOS which would slow down our processes.</li>
+</ul>
+
+
+<p>The downside of this choice is that the process of uploading is not inside the main repo, and can go out of sync with the main app.</p>
+
+<a name="Setup"></a>
+<h2>Setup</h2>
+
+<p>I created a new repo, and added the <a href="https://github.com/artsy/emission-nebula/commit/4d18a11629e097c71b9a375465c754abf45f62d6">usual LICENSE and README</a>, then started <a href="https://github.com/artsy/emission-nebula/pull/1">working on a PR</a> that added the initial support for CI to run. Here are the general steps I needed to make work:</p>
+
+<ul>
+<li>Downloading and setting up the application.</li>
+<li>Ensuring signing will work.</li>
+<li>Creating the build and shipping it to Testflight.</li>
+<li>Notifications that it passed or succeeded.</li>
+</ul>
+
+
+<p>Finally I needed to document the process, which is what you're reading.</p>
+
+<a name="Downloading.and.setting.up.the.application"></a>
+<h2>Downloading and setting up the application</h2>
+
+<p>My initial thoughts were to use a submodule, but that option provides little advantage over cloning the repo itself so it's done inline. Our dependencies for the app live in Rubygems (fastlane/CocoaPods), NPM (React Native) and CocoaPods (Artsy Mobile code), so I use the <code>before_install</code> and <code>before_script</code> section of the <code>.travis.yml</code> to set up our dependencies:</p>
+
+<pre><code class="yml"># Use a Mac build please
+language: objective-c
+osx_image: xcode8.2
+
+# Ensure that fastlane is at the latest version
+before_install:
+- bundle update
+
+# Let fastlane set up the other dependency managers
+before_script:
+- bundle exec fastlane setup
+
+# Separate fastlane lanes so that they can be individually
+# tested one by one during development
+script:
+- bundle exec fastlane validate_env_vars
+- bundle exec fastlane ci_deploy
+</code></pre>
+
+<p>Note the <code>- bundle update</code>. As fastlane works against unofficial iTunes connect which is always changing, it's safer to always use the most recent release.</p>
+
+<a name="Ensuring.signing.will.work."></a>
+<h2>Ensuring signing will work.</h2>
+
+<p>This one is a bit tricker, luckily I've already set up one of our apps to use <a href="/blog/2017/04/05/what-is-fastlane-match/">fastlane match</a> and I can re-use that infrastructure. As it is a private repo, Travis did not have access to clone the repo. I fixed this by creating an access token for a user with read-only access to our match-codesigning repo, then exposed this as a private environment variable in CI which the Matchfile uses. E.g.</p>
+
+<pre><code class="ruby">git_url "https://#{ENV['GITHUB_SUBMODULES_USER']}@github.com/artsy/mobile_fastlane_match"
+
+# Instead of 
+# git_url "https://github.com/artsy/mobile_fastlane_match"
+</code></pre>
+
+<p>This is one of the highlights on fastlane's choice in building a DSL that which sits above a real programming language, you give users a lot of flexibility.</p>
+
+<p>Next up, I added a fastlane lane for code signing, and keychain setup. This just calls two setup functions.</p>
+
+<pre><code class="ruby">lane :setup_signing do
+  setup_travis
+
+  match(type: 'appstore')
+end
+</code></pre>
+
+<a name="Creating.the.build.and.shipping.it.to.Testflight"></a>
+<h2>Creating the build and shipping it to Testflight</h2>
+
+<p>This is handled by <a href="https://github.com/fastlane/fastlane/tree/master/gym">fastlane gym</a> at the start of the main lane.</p>
+
+<pre><code class="ruby"># The main job for fastlane in this repo, you can run this on your computer
+# You can run it via `bundle exec fastlane ship`
+lane :ship do
+  # We were having issues with building an a few folders deep.
+  # The /Pods bit is because we can rely on it being there, see
+  # this link: https://docs.fastlane.tools/advanced/#directory-behavior
+  #
+  Dir.chdir('../emission/Example/Pods') do
+    gym workspace: 'Emission.xcworkspace',
+        configuration: 'Deploy',
+        scheme: 'Emission'
+  end
+
+  # [...]
+end
+</code></pre>
+
+<p>It uses a scheme for deploys, which prioritises using AppHub over a local React Native server. Gym handles a lot of CLI ugliness for us, and works well.</p>
+
+<p>Sending the app to Testflight involves a a few lines:</p>
+
+<pre><code class="ruby"># Get the last 10 lines of the CHANGELOG for Testflight
+changelog = '../emission/CHANGELOG.md'
+upcoming_release_notes = File.read(changelog).split("\n### ").first
+
+# Ship to testflight
+pilot(changelog: upcoming_release_notes)
+</code></pre>
+
+<p>This lets the deploy process figure out what the latest release version is, and how many builds have shipped for that version. Then those can be used to set the build version and create a tag associated with it.</p>
+
+<p><a href="https://github.com/fastlane/fastlane/tree/master/pilot">fastlane pilot</a> is used to send off the compiled build to Testflight.</p>
+
+<a name="Keeping.track.of.deploys"></a>
+<h2>Keeping track of deploys</h2>
+
+<p>I don't know when we'll need it today, but it's always good to be able to go back and see what code lines up to every release. To do this I have a few lines of Ruby that creates a tag inside the original Emission repo.</p>
+
+<pre><code class="ruby"># Do a tag, we use a http git remote so we can have push access
+# as the default remote for travis is read-only. This needs to be
+# inside the emission repo, instead of our own.
+Dir.chdir('../emission/Example/') do
+  tag = "deploy-#{latest_version}-#{build_version}"
+  add_git_tag(key: tag)
+
+  if ENV['GITHUB_SUBMODULES_USER']
+    writable_remote = "https://#{ENV['GITHUB_SUBMODULES_USER']}@github.com/artsy/emission.git"
+    sh "git remote add http #{writable_remote}"
+  else
+    sh 'git remote add http https://github.com/artsy/emission.git'
+  end
+  push_git_tags(remote: 'http')
+end
+</code></pre>
+
+<a name="Notifications.that.it.passed.or.succeeded."></a>
+<h2>Notifications that it passed or succeeded.</h2>
+
+<p>This was easy, I created a new slack inbound web-hook and added that as an environment variable. Then when a build passes we post a notification that there is a new version for everyone in Slack, if the lane fails then it will also post to slack. To ensure we keep on top of it, during development this was commented out.</p>
+
+<pre><code class="ruby"># If the weekly task fails, then ship a message
+error do |_, exception|
+   slack message: "Error Deploying Emission: #{exception}",
+         success: false,
+         payload: { Output: exception.error_info.to_s }
+end
+</code></pre>
+
+<p>That wraps up setting up the CI. Once you've confirmed everything has worked, you can add the scheduler inside Travis and expect to see a slack notification in a week.</p>
+
+<p>By the end of the process, our <code>Fastfile</code> looked like:</p>
+
+<pre><code class="ruby"># This is documented in the Artsy Blog: 
+# http://artsy.github.io/blog/2017/07/31/fastlane-travis-weekly-deploys/
+lane :setup do
+  Dir.chdir('..') do
+    sh 'rm -rf emission' if Dir.exist? 'Emission'
+    sh 'git clone https://github.com/artsy/emission.git'
+    Dir.chdir('emission') do
+      sh '. ~/.nvm/nvm.sh &amp;&amp; nvm use &amp;&amp; npm install yarn --global &amp;&amp; yarn install'
+    end
+
+    Dir.chdir('emission/Example') do
+      sh 'pod repo update'
+      sh 'pod install'
+    end
+    stamp_plist
+  end
+end
+
+# Lets the CI run a bunch of jobs, and share ENV vars between them
+lane :ci_deploy do
+  setup_signing
+  stamp_plist
+  ship
+end
+
+# The main job for fastlane in this repo, you can run this on your computer
+# You can run it via `bundle exec fastlane ship`
+lane :ship do
+  # We were having issues with building an a few folders deep.
+  # The /Pods bit is because we can rely on it being there, see
+  # this link: https://docs.fastlane.tools/advanced/#directory-behavior
+  #
+  Dir.chdir('../emission/Example/Pods') do
+    gym(workspace: 'Emission.xcworkspace',
+        configuration: 'Deploy',
+        scheme: 'Emission')
+  end
+
+  # Get the last 10 lines of the CHANGELOG for Testflight
+  changelog = '../emission/CHANGELOG.md'
+  upcoming_release_notes = File.read(changelog).split("\n### ").first
+
+  # Ship to testflight
+  pilot(changelog: upcoming_release_notes)
+
+  # Log into iTunes connect, get the latest version of the app we shipped, and how many builds we've sent
+  Spaceship::Tunes.login(ENV['FASTLANE_USERNAME'], ENV['FASTLANE_PASSWORD'])
+  app = Spaceship::Tunes::Application.find('net.artsy.Emission')
+  latest_version = app.build_trains.keys.sort.last
+  train = app.build_trains[latest_version]
+  build_version = train.builds.count + 1
+
+  # Do a tag, we use a http git remote so we can have push access
+  # as the default remote for travis is read-only. This needs to be
+  # inside the emission repo, instead of our own.
+  Dir.chdir('../emission/Example/') do
+    tag = "deploy-#{latest_version}-#{build_version}"
+    add_git_tag(key: tag)
+
+    if ENV['GITHUB_SUBMODULES_USER']
+      writable_remote = "https://#{ENV['GITHUB_SUBMODULES_USER']}@github.com/artsy/emission.git"
+      sh "git remote add http #{writable_remote}"
+    else
+      sh 'git remote add http https://github.com/artsy/emission.git'
+    end
+
+    push_git_tags(remote: 'http')
+  end
+
+  slack message: 'There is a new Emission beta available on Testflight.',
+        payload: {
+          'Version' =&gt; latest_version,
+          "What's new" =&gt; upcoming_release_notes
+        },
+        default_payloads: []
+end
+
+# In case you need to update the signing profiles for this app
+lane :update_signing do
+  match(type: 'appstore')
+end
+
+# Used by CI, will not sneakily update (the CI only has read-only access to the repo anyway)
+lane :setup_signing do
+  setup_travis
+  match(type: 'appstore')
+end
+
+# Minor plist modifications
+lane :stamp_plist do
+  plist = 'emission/Example/Emission/Info.plist'
+
+  # Increment build number to current date
+  build_number = Time.new.strftime('%Y.%m.%d.%H')
+  `/usr/libexec/PlistBuddy -c "Set CFBundleVersion #{build_number}" "#{plist}"`
+end
+
+# Mainly so we don't forget to include these vars in the future
+lane :validate_env_vars do
+  unless ENV['FASTLANE_USERNAME'] &amp;&amp; ENV['FASTLANE_PASSWORD'] &amp;&amp; ENV['MATCH_PASSWORD']
+    raise 'You need to set FASTLANE_USERNAME, FASTLANE_PASSWORD and MATCH_PASSWORD in your environment'
+  end
+
+  unless ENV['SLACK_URL']
+    raise "You need to set SLACK_URL (#{ENV['SLACK_URL']}) in your environment."
+  end
+end
+
+# If the weekly task fails, then ship a message, a success would also send
+error do |_, exception|
+  slack(message: "Error Deploying Emission: #{exception}",
+        success: false,
+        payload: { Output: exception.error_info.to_s })
+end
+</code></pre>
+
+<p>Automatically deploying is a good pattern for encouraging more deploys of an app which has only been deployed once. It's a pattern we could also move to in some of our other apps too, if it feels good. If you're interested in if something has changed since this post was authored, the repo is here: https://github.com/artsy/emission-nebula so you can read out the Fastfile and we'll answer questions you have inside GitHub issues on it.</p>
+
+<p>The most annoying part about building deployment changes are that an iteration takes ~20 minutes, so make sure you also have another (easily interrupted) task to do at the same time.</p>
+
+<p>The second most annoying is that it took months to eventually get this right - so I owe Felix Krause a big thanks for sitting down and pairing with me, we figuring out that <code>xcodebuild</code> can create empty archive issues when you run projects that have the xcproject/xcworkspace a few levels deep.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[What is fastlane match?]]></title>
+    <link href="http://artsy.github.io/blog/2017/04/05/what-is-fastlane-match/"/>
+    <updated>2017-04-05T12:17:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2017/04/05/what-is-fastlane-match</id>
+    <content type="html"><![CDATA[<p>Like anyone working on a non-trivial app in the iOS world who values their time, we use fastlane. <a href="https://fastlane.tools">fastlane</a> is a suite
+of tools that makes it much simpler to automate the very manual processes provided by Apple for deployment.</p>
+
+<p>We've adopted it in a relatively piece-meal manner in different projects, converting custom in-house code to something
+provided by the gem.  Over time we found what pieces of the suite work for us. <a href="https://github.com/artsy/energy/pull/266">I've adopted another today</a>: <a href="https://github.com/fastlane/fastlane/tree/master/match">match</a>.</p>
+
+<p>match automates setting up your iOS projects for code signing. One of the most arduous orthogonal tasks which every dev team learns and then forgets.</p>
+
+<p>In using match, we have given away a bit of control with code signing, and so this post is going to dig into; what we used
+to have, and how it works now with match instead.</p>
+
+<!-- more -->
+
+
+<p>When match came out, I knew this was a 🌟 idea.</p>
+
+<ul>
+<li>Automatically generate the right certificates and keys for your different apps and environments.</li>
+<li>Take all your developer certificates and keys, move them to a central place accessible via private git repos.</li>
+<li>Encrypt all your certs and keys, the team just needs to share one password.</li>
+<li>Migrate all of those keys on both the developer's and CI's computers.</li>
+</ul>
+
+
+<p>You can now have a consistent signing setup between how you work, and how your CI runs. After understanding this, I migrated
+Artsy's app store apps to deploy via <a href="https://circleci.com">Circle CI</a>. We initially gave match a shot, but ended up having issues with supporting
+multiple apps. So, I replicated the core ideas in match into our Fastfile. It looked like this:</p>
+
+<pre><code class="ruby">lane :setup_for_app_store do
+  app_name = "eigen"
+  signing_root = "signing"
+
+  `git clone https://github.com/artsy/mobile_code_signing.git #{signing_root}`
+
+  # prints out the codesigning identities
+  system "security find-identity -v -p codesigning"
+
+  # Install the iOS distribution certificate, -A
+  system "security import #{signing_root}/ios_distribution.cer  -k ~/Library/Keychains/login.keychain -A"
+
+  # Move our provisioning profile in
+  profile_path = File.expand_path("~") + "/Library/MobileDevice/Provisioning Profiles/"
+  destination = profile_path + "/" + app_name + ".mobileprovision"
+  profile = Dir.glob(signing_root + "/profiles/" + app_name + "/*").first
+
+  # Ensure folder exists
+  unless File.directory?(profile_path)
+    FileUtils.mkdir_p(profile_path)
+  end
+
+  # Migrate it in
+  FileUtils.copy profile, destination
+  puts "Installed Profile"
+
+  # Install the key
+  key = Dir.glob(signing_root + "/keys/" + app_name + "/*").first
+  system "security import #{key} -k ~/Library/Keychains/login.keychain -P #{ENV['MATCH_PASSWORD']}  -A "
+
+  # prints out the codesigning identities
+  system "security find-identity -v -p codesigning"
+
+  # Clean-up
+  `rm -rf #{signing_root}`
+end
+</code></pre>
+
+<p>Pretty neat, huh? It handles the centralization and migration of certificates. The trade-off against match is:</p>
+
+<ul>
+<li>We continue to maintain our own certificates, keys and provisioning profiles.</li>
+<li>There is no easy way to update these.</li>
+<li>There is tooling which makes it easy to see the state of all the code signing process.</li>
+</ul>
+
+
+<p>A year later, on a project which gets no-where near as much developer attention, I discovered that we had got multiple
+parts of the certs, keys and profiles wrong when updating our central repo. So, for <a href="http://folio.artsy.net">this project</a>, I have switched to use match.</p>
+
+<hr />
+
+<a name="So.how.does.it.work.now."></a>
+<h1>So how does it work now?</h1>
+
+<p>First, I ran <code>bundle exec fastlane appstore</code> and <code>bundle exec fastlane dev</code>.</p>
+
+<p>This creates the certificates, keys and profiles on iTunes connect and gives you output similar to this:</p>
+
+<pre><code class="sh">
++-----------------------+------------------------------------------------+
+|                        Summary for match 2.25.0                        |
++-----------------------+------------------------------------------------+
+| readonly              | true                                           |
+| git_url               | https://github.com/artsy/mobile_fastlane_match |
+| type                  | appstore                                       |
+| git_branch            | master                                         |
+| app_identifier        | sy.art.folio                                   |
+| username              | it@artsymail.com                               |
+| keychain_name         | login.keychain                                 |
+| team_id               | 23KMWZ572J                                     |
+| team_name             | Art.sy Inc.                                    |
+| verbose               | false                                          |
+| force                 | false                                          |
+| skip_confirmation     | false                                          |
+| shallow_clone         | false                                          |
+| force_for_new_devices | false                                          |
+| skip_docs             | false                                          |
+| platform              | ios                                            |
++-----------------------+------------------------------------------------+
+
++-------------------+-----------------------------------------------+
+|                       Installed Certificate                       |
++-------------------+-----------------------------------------------+
+| User ID           | 23KMWZ572J                                    |
+| Common Name       | iPhone Distribution: Art.sy Inc. (23KMWZ572J) |
+| Organisation Unit | 23KMWZ572J                                    |
+| Organisation      | Art.sy Inc.                                   |
+| Country           | US                                            |
+| Start Datetime    | Apr  4 13:59:06 2017 GMT                      |
+| End Datetime      | Apr  4 13:59:06 2018 GMT                      |
++-------------------+-----------------------------------------------+
+
++---------------------+-----------------------------------------+-------------------------------------------------------------------------------------------------------------+
+|                                                                       Installed Provisioning Profile                                                                        |
++---------------------+-----------------------------------------+-------------------------------------------------------------------------------------------------------------+
+| Parameter           | Environment Variable                    | Value                                                                                                       |
++---------------------+-----------------------------------------+-------------------------------------------------------------------------------------------------------------+
+| App Identifier      |                                         | sy.art.folio                                                                                                |
+| Type                |                                         | appstore                                                                                                    |
+| Platform            |                                         | ios                                                                                                         |
+| Profile UUID        | sigh_sy.art.folio_appstore              | b045df0f-a691-4b7a-ac34-8349a3684030                                                                        |
+| Profile Name        | sigh_sy.art.folio_appstore_profile-name | match AppStore sy.art.folio                                                                                 |
+| Profile Path        | sigh_sy.art.folio_appstore_profile-path | /Users/orta/Library/MobileDevice/Provisioning Profiles/b045df0f-a691-4b7a-ac34-8349a3684030.mobileprovision |
+| Development Team ID | sigh_sy.art.folio_appstore_team-id      | 23KMWZ572J                                                                                                  |
++---------------------+-----------------------------------------+-------------------------------------------------------------------------------------------------------------+
+</code></pre>
+
+<p>Which at a glimpse gives a lot of the most useful information about how all the pieces come together. The new repo looks like this:</p>
+
+<pre><code class="sh">$ tree mobile_fastlane_match
+
+├── README.md
+├── certs
+│   ├── development
+│   │   ├── P4K6FACAUD.cer
+│   │   └── P4K6FACAUD.p12
+│   └── distribution
+│       ├── N5BMJ28RQ2.cer
+│       └── N5BMJ28RQ2.p12
+├── match_version.txt
+└── profiles
+    ├── appstore
+    │   └── AppStore_sy.art.folio.mobileprovision
+    └── development
+        └── Development_sy.art.folio.mobileprovision
+</code></pre>
+
+<a name="So..what.is.Match.doing.here."></a>
+<h2>So, what is Match doing here?</h2>
+
+<ol>
+<li><p>match creates a new key (the <code>*.p12</code>) - normally you would generate one of these through Keychain, and the entire team would
+to share this. We keep ours in team <a href="http://1password.com">1Password</a>. It needs to be used consistently when request certificates from Apple
+though the "Request a Certificate from a Certificate Authority" part of getting your certs set up.</p></li>
+<li><p>Using <a href="https://github.com/fastlane/fastlane/tree/master/cert">cert</a>: match will use this key <a href="https://github.com/fastlane/fastlane/blob/14dea61e4c81bf9be13bb86c09aa225c6e572618/cert/lib/cert/runner.rb#L141">to create a signing request</a> for you.</p></li>
+<li><p>Using <a href="https://github.com/fastlane/fastlane/tree/master/cert">cert</a>: match will generate a certificate for <a href="https://github.com/fastlane/fastlane/blob/14dea61e4c81bf9be13bb86c09aa225c6e572618/cert/lib/cert/runner.rb#L79">development or distribution</a> for you.</p></li>
+<li><p>Using <a href="https://github.com/fastlane/fastlane/tree/master/cert">cert</a>: match will <a href="https://github.com/fastlane/fastlane/blob/14dea61e4c81bf9be13bb86c09aa225c6e572618/match/lib/match/runner.rb#L133">generate a Provisioning Profile</a> using your certificate and data pulled from your Xcode Project.
+In my case, for development and distribution.</p>
+
+<p>These profiles are tied directly to one app and the certificate in step 3. For development, all devices in the dev center are also added.</p></li>
+<li><p>These files are then installed in their various methods.</p></li>
+<li><p>These files are then moved into your git repo, a commit is made for you, then pushed and the repo is removed from your computer.</p></li>
+</ol>
+
+
+<p>This process is nice, because this ^ is a lot of work. I only had to run a command.</p>
+
+<p>It would take at about 30 minutes to do this if I knew exactly what I wanted through the web interface + Keychain.</p>
+
+<p>We currently need to do this for every app. This works fine for the app where we are deploying multiple betas a month,
+but for one when we're deploying <em>maybe</em> a beta once a month or two (<em>eek! sorry...</em>) then it feels like every time you've come
+back to do some work, the world has shifted a bit.</p>
+
+<p>We do lose the fact that we know someone has specifically set everything up to work right at some point, but given how
+Xcode updates, <a href="http://stackoverflow.com/questions/4057241/iphone-what-is-a-wwdr-intermediate-certificate">WWDR updates</a> and certificate expirations tend to crop up - it can be frustrating to maintain.</p>
+
+<p>So would I move <a href="https://github.com/artsy/eigen">Eigen</a> to match? Maybe, next time something breaks. Till then I think new apps, and less-often updated
+apps should use match.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Xcode 8 Manual Codesigning with Fastlane]]></title>
+    <link href="http://artsy.github.io/blog/2017/01/13/xcode-8-fastlane-codesigning/"/>
+    <updated>2017-01-13T14:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2017/01/13/xcode-8-fastlane-codesigning</id>
+    <content type="html"><![CDATA[<p>New year, new deploy process! Late last year our mobile team completed the update to Swift 3 (and thus, the update to Xcode 8). The latest version of Apple's IDE includes a lovely feature: automating provisioning profile management! (Note: not sarcasm, the feature is really nice. Check out the <a href="https://developer.apple.com/videos/play/wwdc2016/401/">WWDC video</a> for an in-depth exploration.)</p>
+
+<p><img src="/images/2017-01-13-xcode-8-fastlane-codesigning/xcode-screenshot.png" alt="Automatic code signing settings" /></p>
+
+<p>However, when I went to make our first <a href="http://artsy.github.io/blog/2015/12/15/Automating-Testflight-Deploys/">automated deploy</a> today, things didn't work; I got a somewhat cryptic error about code signing.</p>
+
+<!-- more -->
+
+
+<blockquote><p>Code signing is required for product type 'Application' in SDK 'iOS 10.1'</p></blockquote>
+
+<p>Code signing was failing for our project. Hmm. First step in fixing a bug is always to reproduce it, which I could do locally. I started looking into the code that manages our deploys' signing process and got lost. My colleague Orta was kind enough to give me a hand.</p>
+
+<p>Some background: the Fastlane suite of tools includes <a href="https://github.com/fastlane/fastlane/tree/master/match">Match</a>, which manages your signing certificates and provisioning profiles in a private GitHub repository. We don't use match due to complications with our multiple apps, but we use <a href="https://github.com/artsy/eigen/blob/608f60860165dd9b3c376da00492a3cb36bf5214/fastlane/Fastfile#L95-L130">very similar logic</a> to clone the repo, extract the certificate and profile, and install the keys on CI.</p>
+
+<p>So what wasn't working?</p>
+
+<p>Well it turns out that Xcode's fancy new automatic code signing was incompatible with our manual process of specifying certificates and profiles. The easy solution would be to simply disable that setting, but that would be a shame: the new automatic code signing makes developing on devices way easier and we didn't want to sacrifice that for the sake of our deploys.</p>
+
+<p>So we went looking and luckily found <a href="https://github.com/artsy/eigen/pull/2104">the solution</a>. We amended our codesigning setup with the <a href="https://docs.fastlane.tools/actions/#update_project_provisioning">update_project_provisioning</a> and <a href="https://docs.fastlane.tools/actions/#update_project_team">update_project_team</a> Fastlane actions, and the <a href="https://github.com/hjanuschka/fastlane-plugin-update_project_codesigning">update_project_codesigning plugin</a>. Basically, we disable the automatic signing feature and then manually set the provisioning profile to the one we cloned from our private GitHub repo.</p>
+
+<p>So remember folks, if you're ever asked to sacrifice ease of development for the sake of getting computers to behave, there's probably a better way.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Accessing the app's Source Code from your Simulator]]></title>
+    <link href="http://artsy.github.io/blog/2016/10/14/Accessing-the-Source-Code-from-your-Simulator/"/>
+    <updated>2016-10-14T12:17:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2016/10/14/Accessing-the-Source-Code-from-your-Simulator</id>
+    <content type="html"><![CDATA[<p>In the last few months twice I've wanted to access the source code of our application. The first time I did it I came up with a pretty neat hack, but it wouldn't really work in many places. The second time however, I <a href="https://twitter.com/orta/status/786470282093625344">asked the internet</a>, and the <a href="https://twitter.com/saniul/status/786470857635827712">internet</a> <a href="https://twitter.com/0xced/status/786619335116750848">replied</a>.</p>
+
+<p>TLDR: You can use your <a href="https://github.com/artsy/emission/pull/350/commits/2a39c743bcaaf2e3b848ad60621198f40365fdd2">project's scheme</a> to expose derived Xcode environment variables to your source code.</p>
+
+<p>The rest of the blog post is a little bit about <em>why</em> I wanted to do that and what I did with it.</p>
+
+<!-- more -->
+
+
+<p>Both times I've wanted to access the source code of our apps is because I've wanted to make better admin tools. It should come as no surprise to people who know me that I care about tooling, but I also care a lot about making it possible for our admins to do their own thing. As such, our <a href="https://github.com/artsy/eigen/blob/master/Artsy/View_Controllers/Admin/ARAdminSettingsViewController.m">admin settings panel</a> in Eigen is extensive.</p>
+
+<a name="Root.React.Components"></a>
+<h3>Root React Components</h3>
+
+<p>The first time came when I started to think about what admin options I'd like to see for people using our React Native side. These are the options I came up with:</p>
+
+<p> <img src="/images/source-code-sim/react-admin-eigen.png" alt="/images/source-code-sim/react-admin-eigen.png" /></p>
+
+<p>There are two interesting things about it:</p>
+
+<ul>
+<li>We support running any master commit of our React Native code inside Eigen, for Admins, <a href="https://apphub.io">via AppHub</a></li>
+<li>We allow loading arbitrary React components as an admin.</li>
+</ul>
+
+
+<p> It's this last bit that's interesting, right now I'm working on a new root Gene component (read: new view controller) in Emission, our React Native implementation. As this work has not moved upstream into Eigen, I can access it through a commit on AppHub, and then open it using our custom module loader:</p>
+
+<p><img src="/images/source-code-sim/react-module-eigen.png" alt="/images/source-code-sim/react-module-eigen.png" /></p>
+
+<p>In order to show the available root components (Artist/Home/Gene), we use GitHub's raw URLs to download the source code of our Open Source apps. Hah, a nice hack right? I <a href="https://github.com/artsy/eigen/blob/master/Artsy/View_Controllers/Admin/ARAdminNetworkModel.m">created</a> a <code>ARAdminNetworkModel</code> with an API like this:</p>
+
+<pre><code class="objc">@interface ARAdminNetworkModel : NSObject
+
+- (void)getEmissionJSON:(NSString *)path completion:(void (^)(NSDictionary *json, NSError *error))completion;
+
+- (void)getEmissionFile:(NSString *)path completion:(void (^)(NSString *fileContents, NSError *error))completion;
+
+@end
+</code></pre>
+
+<p>Which simply uses <code>NSURLSession</code> under the hood:</p>
+
+<pre><code class="objc">- (void)getEmissionData:(NSString *)path completion:(void (^)(NSData *data, NSError *error))completion;
+{
+    NSURLSession *session = [NSURLSession sharedSession];
+    NSString *urlFormat = @"https://raw.githubusercontent.com/artsy/emission/master/%@";
+    NSString *url = [NSString stringWithFormat: urlFormat, path];
+    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url]];
+    NSURLSessionDataTask *task = [session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+            completion(data, error);
+    }];
+    [task resume];
+}
+</code></pre>
+
+<p>Nothing special, but it required a cognitive jump to get there.</p>
+
+<a name="Submodule.Introspection"></a>
+<h3>Submodule Introspection</h3>
+
+<p>The second time I wanted this is inside <a href="https://github.com/artsy/emission/tree/master/Example">the example app</a> for Emission. This is a typical example application for a library made by <code>pod lib create</code>. This example app is basically just the admin settings panel from Eigen, shown above.</p>
+
+<p>When I <a href="https://github.com/artsy/emission/pull/347">switched the</a> example app to use a similar theme and menu DSL as Eigen, I also took the chance to expand on the buttons we had available. Previously there was the ability to load the view controller for one specific artist, but I knew we had a <a href="https://github.com/artsy/metaphysics/blob/master/schema/artist/maps/artist_title_slugs.js">giant list of artist slugs</a> inside one of our optional sub-modules. What I wanted to do, was offer a random Artist from that if the submodule was <code>init</code>'d.</p>
+
+<p>This required introspecting the source, which I could have also done via the GitHub API, but it was also feasible to do by accessing the filesystem outside of the simulator. This is totally possible ( and is <a href="https://www.objc.io/issues/15-testing/snapshot-testing/">how FBSnapshots works</a> ) but I needed to access the project root, then I could build relative links. Thus, <a href="https://twitter.com/orta/status/786470282093625344">I asked the internet</a>. I knew these variables existed, but that they were a part of the build process - and not exposed to the app runtime.</p>
+
+<p>There are two ways to do it, both make sense for different contexts:</p>
+
+<ul>
+<li><a href="https://github.com/artsy/emission/blob/74d0bc6cc45da906436f8bbc33710ea030657ee8/Example/Emission/Info.plist#L5-L6">Baking the value into your Info.plist</a> - which makes it available for all consumers at runtime, e.g. you could deploy this value, but it's not too useful for my problem.</li>
+<li><a href="https://github.com/artsy/emission/pull/350/commits/2a39c743bcaaf2e3b848ad60621198f40365fdd2">Exposing it as an environment variable via your scheme</a> - perfect for this case, the variable won't be exported when you deploy.</li>
+</ul>
+
+
+<p>Now our scheme looks like this:</p>
+
+<p></div></div><a href='/images/source-code-sim/scheme-settings-emission.png'><img src="/images/source-code-sim/scheme-settings-emission.png"></a><div class='meta-container'><header>&nbsp;</header></div><div class='date-container'>&nbsp;</div><div class='content-container'><div class='entry-content'></p>
+
+<p>I can then use the value of <code>SRCROOT</code> as the start of an absolute path to get to any of the source code in our project. Making the <a href="https://github.com/artsy/emission/blob/dda57636e424ab7d4517de57f3e8bd917fcb3c6f/Example/Emission/ARRootViewController.m#L85-L108">final code</a>:</p>
+
+<pre><code class="obj-c">- (ARCellData *)jumpToRandomArtist
+{
+  NSString *sourceRoot = [NSProcessInfo processInfo].environment[@"SRCROOT"];
+  NSString *artistListFromExample = @"../externals/metaphysics/schema/artist/maps/artist_title_slugs.js";
+  NSString *slugsPath = [sourceRoot stringByAppendingPathComponent:artistListFromExample];
+
+  NSFileManager *manager = [NSFileManager defaultManager];
+
+  // Don't have the submodule? bail, it's no biggie
+  if (![manager fileExistsAtPath:slugsPath]) { return nil; }
+
+  // Otherwise lets support jumping to a random Artist
+  return [self tappableCellDataWithTitle:@"Artist (random from metaphysics)" selection: ^{
+    NSString *data = [NSString stringWithContentsOfFile:slugsPath encoding:NSUTF8StringEncoding error:nil];
+
+    ... and so on
+</code></pre>
+
+<a name="Tooling"></a>
+<h3>Tooling</h3>
+
+<p>Paying attention to your admin tools, and improving your development experience for the whole team is a great way to win friends and influence people. Introspecting your source code may help that.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[The Eidolon Deploy Process]]></title>
+    <link href="http://artsy.github.io/blog/2016/10/08/eidolon-deploy-process/"/>
+    <updated>2016-10-08T12:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2016/10/08/eidolon-deploy-process</id>
+    <content type="html"><![CDATA[<p>Since we <a href="http://artsy.github.io/blog/2014/11/13/eidolon-retrospective/">originally built</a> Eidolon – an auction bidding kiosk app – the project has largely remained in maintenance mode. Eidolon was one of the first projects that we used automated deploys for, and the deploy process has remained largely unchanged. I believe this stability of the deploy process is a testament to how well the automated deploys have gone.</p>
+
+<p>This post is going to detail the mechanics of automated deploys for an enterprise-distributed iOS application, discuss lessons we learned and applied to other projects' deploy processes, and describe some of the changes we'd like to make. Our project is entirely open source, so you can check out any part of the code on your own or <a href="https://github.com/artsy/eidolon/issues/new">open an issue</a> with questions.</p>
+
+<!-- more -->
+
+
+<a name="Deploying.Eidolon"></a>
+<h2>Deploying Eidolon</h2>
+
+<p>It's one command on the terminal to deploy Eidolon:</p>
+
+<pre><code class="sh">bundle exec fast lane deploy version:X.Y.Z
+</code></pre>
+
+<p>This command does a lot of things. It uses <a href="https://fastlane.tools">Fastlane</a>, and you can <a href="https://github.com/artsy/eidolon/blob/a0aad31bccfe2b4abf648fc64892cc165be400b4/fastlane/Fastfile#L40-L131">read the entire script here</a>. We're going to go over each part line-by-line. A few notes:</p>
+
+<ul>
+<li>We run this command locally on a development machine that has the keys installed to sign a deploy.</li>
+<li>Our changelog is formatted in <a href="https://en.wikipedia.org/wiki/YAML">yaml</a>, our script uses this strategically.</li>
+<li>Our deploy script modifies the project's Info.plist version and build number, as well as the changelog.</li>
+</ul>
+
+
+<p>Let's dive in!</p>
+
+<a name="The.Script"></a>
+<h2>The Script</h2>
+
+<p>The first thing we do is verify that the version number we've been given is in the proper <a href="http://semver.org">SemVer</a> format.</p>
+
+<pre><code class="rb">version = options[:version]
+raise "You must specify a version in A.B.X format to deploy." if version.nil? || version.scan(/\d+\.\d+\.\d+/).length == 0
+</code></pre>
+
+<p>We deploy using Hockey, so make sure that an environment variable with the Hockey API key is set.</p>
+
+<pre><code class="rb">hockey_api_token = ENV['HOCKEY_API_TOKEN']
+raise "You must specify a HOCKEY_API_TOKEN environment variable to deploy." if hockey_api_token.nil?
+</code></pre>
+
+<p>We also want to verify that we have valid API keys for analytics, the Artsy API, and a few other services the app uses. This validation only makes sure the keys have been set to non-empty values. And we don't want to accidentally deploy uncommited changes, so we check the git status first.</p>
+
+<pre><code class="rb">verify_pod_keys
+ensure_git_status_clean
+</code></pre>
+
+<p>Next we need to set the build number. These need to be unique, and we use the current date. This could be a problem if we need to deploy more than once in a day. It hasn't been a problem yet, though, since we rarely deploy.</p>
+
+<p>We also want to set the Info.plist's version to the one specified when we run the <code>fastlane</code> command.</p>
+
+<pre><code class="rb">build_number = Time.new.strftime("%Y.%m.%d")
+increment_build_number build_number: build_number
+
+increment_version_number version_number: version
+</code></pre>
+
+<p>Okay, now it's time to generate markdown release notes from the changelog. Our changelog is in the following format:</p>
+
+<pre><code class="yaml">upcoming:
+- Upcoming version bug fix.
+
+releases:
+- version: X.Y.Z
+  date: Month Day Year
+  notes:
+  - Previous version bug fix.
+</code></pre>
+
+<p>We want to grab the <code>upcoming</code> notes for the changelog, and then move them to the <code>releases</code> section. Let's generate the notes first:</p>
+
+<pre><code class="rb">changelog_filename = '../CHANGELOG.yml'
+changelog_yaml = YAML.load_file(changelog_filename)
+release_notes = changelog_yaml['upcoming'].map{ |note| note.prepend '- ' }.join("\n")
+</code></pre>
+
+<p>Updating the changelog is a little messy. I tried parsing the changelog as yaml, modifying it, and then writing it back as yaml, but kept running into trouble. Instead, I treat it as plain text. We open the changelog, split on <code>releases:</code>, prepend the existing releases with a the generated release notes, and write the changelog.</p>
+
+<pre><code class="rb">changelog_contents = File.read(changelog_filename)
+existing_releases = changelog_contents.split('releases:').last
+this_release = changelog_yaml['upcoming'].map{ |note| note.prepend '  ' }.join("\n")
+changelog_contents = &lt;&lt;-EOS
+upcoming:
+releases:
+- version: #{version}
+  date: #{Time.new.strftime("%B %d %Y")}
+  notes:
+#{this_release}
+#{existing_releases}
+EOS
+
+File.open(changelog_filename, 'w') { |file| file.puts changelog_contents }
+</code></pre>
+
+<p>At this point, we're ready to start the actual deploy process. First we need to download the provisioning profiles, which is only one step with Fastlane:</p>
+
+<pre><code class="rb">sigh
+</code></pre>
+
+<p>Next we build our app using <code>gym</code>. We need to use the legacy build API, I can't remember why.</p>
+
+<pre><code class="rb">gym(
+  scheme: "Kiosk",
+  export_method: 'enterprise',
+  use_legacy_build_api: true
+)
+</code></pre>
+
+<p>With our build finished, we upload to Hockey.</p>
+
+<pre><code class="rb">hockey(
+  api_token: hockey_api_token,
+  notes: release_notes
+)
+</code></pre>
+
+<p>Okay, our build is deployed. Time to let the team know there's a new version available:</p>
+
+<pre><code class="rb">slack(
+  message: "There is a new version of the Kiosk app available. Download it at http://artsy.net/kioskbeta",
+  success: true,        # optional, defaults to true
+  payload: {            # optional, lets you specify any number of your own Slack attachments
+    'Version' =&gt; version,
+    'What\'s new' =&gt; release_notes,
+  },
+  default_payloads: [],
+)
+</code></pre>
+
+<p><code>default_payloads</code> needs to be empty I think, I can't remember why. Seems like "I can't remember why" is a common theme here...</p>
+
+<p>Before committing the changes we've made to the changelog and Info.plist files, we need to clean any build artefacts. This includes the actual binary that was compiled, unit test coverage reports, and downloaded provisioning profiles.</p>
+
+<pre><code class="rb">clean_build_artifacts
+</code></pre>
+
+<p>Finally, we commit, tag the build, and push to GitHub. Fastlane's built-in commands to commit to git reject any changes except to Info.plist files, and we've modified the changelog, so I used <code>sh</code> and used git directly.</p>
+
+<pre><code class="rb">sh "git add .. ; git commit -m 'Deploying version #{version}.'"
+add_git_tag tag: version
+push_to_git_remote
+</code></pre>
+
+<p>And that's it! With one terminal command, we've done all the following:</p>
+
+<ul>
+<li>Verified version number format.</li>
+<li>Verified the local environment is set up to deploy.</li>
+<li>Verified API keys used by the app aren't empty.</li>
+<li>Incremented the build number and version.</li>
+<li>Updated the changelog.</li>
+<li>Built and signed the app.</li>
+<li>Uploaded the build to Hockey.</li>
+<li>Posted a notification to Slack.</li>
+<li>Tagged the release and pushed to GitHub.</li>
+</ul>
+
+
+<a name="Lessons.Learned"></a>
+<h2>Lessons Learned</h2>
+
+<p>Automating Eidolon deploys was one of the first automated deploys we built on Artsy's iOS team. Now, based on Eidolon's successful deploy process, all our iOS deploys are automated.</p>
+
+<p>We've learned a few lessons.</p>
+
+<p>First, running deploys locally is <em>so 2015</em>. Our more modern deploy processes run on continuous integration servers like Circle CI. This poses some problems around securing certificates necessary to deploy, maybe we'll cover that in a future blog post.</p>
+
+<p>We deploy on CI based on pushes to a specific branch, and we run our deploy script only if the unit tests pass. This is a huge incentive to keep CI green.</p>
+
+<p>On other iOS projects, we sometimes deploy more than once a day, so we use <code>Year.Month.Day.Hour</code> as the build number format, which is unique enough to do one deploy per hour. This is good enough for now.</p>
+
+<p>One thing I really wish I'd done when I set up automated deploys is to document things a little better. To be honest, that's part of the motivation to write this blog post (better late than never!).</p>
+
+<a name="Conclusion"></a>
+<h2>Conclusion</h2>
+
+<p>Overall, automating deploys for Eidolon has been a huge win. The other night, we had an emergency at an auction: the Eidolon app was no longer working and we needed a new deploy.</p>
+
+<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">Guess who’s got two thumbs and forgot that their enterprise distribution certificates expire in September.<br><br>👍this guy👍</p>&mdash; Ash vs NSThread (@ashfurrow) <a href="https://twitter.com/ashfurrow/status/784548214527627266">October 8, 2016</a></blockquote>
+
+
+<p> <script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script></p>
+
+<p>From the time the team let me know about the problem to the time they had a fresh deploy with a new certificate, less than twenty minutes had passed. I issued one command and watched it do all the work for me. If I had to manually follow a set of arcane steps I hadn't done in a long time, our team might not have had the new build in time.</p>
+]]></content>
+  </entry>
+  
+</feed>

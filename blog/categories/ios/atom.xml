@@ -1,0 +1,1408 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: ios | Artsy Engineering]]></title>
+  <link href="http://artsy.github.io/blog/categories/ios/atom.xml" rel="self"/>
+  <link href="http://artsy.github.io/"/>
+  <updated>2018-12-16T10:16:31+00:00</updated>
+  <id>http://artsy.github.io/</id>
+  <author>
+    <name><![CDATA[]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Managing Secrets in a React Native App]]></title>
+    <link href="http://artsy.github.io/blog/2018/06/15/cocoapods-keys-react-native/"/>
+    <updated>2018-06-15T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/06/15/cocoapods-keys-react-native</id>
+    <content type="html"><![CDATA[<!--
+Iɴᴛʀᴏᴅᴜᴄᴛɪᴏɴ
+-->
+
+
+<p>Hi! I'm Erik, a software engineer on the Purchase team. One of the most visible payoffs from Artsy's investments in React Native <a href="https://artsy.github.io/search/?q=react+native">over the past two years</a> has been the opening up of our mobile codebase to contributors like myself coming primarily from web stacks. It's nice to be able to build mobile interfaces with the same declarative API used by so many of our web projects, but sometimes we still need to bridge the divide to our Objective-C and Swift ecosystem. One such case: replacing the app secrets typically loaded from a deploy environment or web developer's <a href="https://www.npmjs.com/package/dotenv">dotenv</a> file.</p>
+
+<!-- more -->
+
+
+<!--
+Mᴀɪɴ Bᴏᴅʏ
+-->
+
+
+<p><a href="https://github.com/artsy/emission">Emission</a> is Artsy's React Native component library. It contains its own native app in the <code>/Example</code> folder, which uses <a href="https://artsy.github.io/blog/2015/01/21/cocoapods-keys-and-CI/">cocoapods-keys</a> to store secrets while still letting us code in the open. In order to expose these keys to our React Native components, however, we must do a fair bit of setup. Here's a straightforward how-to that also makes a quick tour through the iOS ecosystem for web developers looking at the React Native JavaScript runtime today.</p>
+
+<p>Links to examples below come from <a href="https://github.com/artsy/emission/pull/1086/commits/4a2a3e9260e97d791536cf38376a06b0ad0946a8">this commit</a> which adds a key for the Stripe API to Emission. When we are finished, a client app (<code>/Example</code>, <a href="https://github.com/artsy/eigen">Eigen</a>, etc.) will be able to initialize Emission with this secret, which will in turn make it available to React Native components.</p>
+
+<a name="Steps"></a>
+<h2>Steps</h2>
+
+<a name="L1..Add.the.key.to.the.app.s.Podfile."></a>
+<h4>1. Add the key to the app's Podfile.</h4>
+
+<p>This is the extent of <code>cocoapods-keys</code> official <a href="https://github.com/orta/cocoapods-keys#usage">setup</a>, and after this you <strong>could</strong> set the key via <code>pod keys set &lt;NAME&gt;</code> or <code>pod install</code>... but we have more to do.</p>
+
+<p><a href="https://github.com/artsy/emission/blob/4a2a3e9260e97d791536cf38376a06b0ad0946a8/Example/Podfile#L63">/Example/Podfile</a>:</p>
+
+<pre><code class="diff">plugin 'cocoapods-keys', {
+  :target =&gt; 'Emission',
+  :keys =&gt; [
+    'ArtsyAPIClientSecret',
+    'ArtsyAPIClientKey',
++    'StripePublishableKey',
+  ]
+}
+</code></pre>
+
+<hr />
+
+<a name="L2..Configure.the.library.to.consume.our.new.key"></a>
+<h4>2. Configure the library to consume our new key</h4>
+
+<p>We'll need to update the <code>initWithUserId...</code> function — one <strong>fun</strong> part of adjusting to Objective-C is that rather than named functions, we just refer to them by their entire signatures — to expose the new key as a property and add it to <code>constantsToExport</code> (<a href="https://facebook.github.io/react-native/docs/native-modules-ios.html#exporting-constants">docs</a>).</p>
+
+<p>Note that this is happening in our <em>Emission Pod</em>; The pod now expects that key to be available in our <em>consuming</em> Example app as defined above.</p>
+
+<p><a href="https://github.com/artsy/emission/blob/4a2a3e9260e97d791536cf38376a06b0ad0946a8/Pod/Classes/Core/AREmission.h#L17-L34">/Pod/Classes/Core/AREmission.h</a>:</p>
+
+<pre><code class="diff">// ENV Variables
+ #import &lt;React/RCTBridgeModule.h&gt;
+
+ @interface AREmissionConfiguration : NSObject &lt;RCTBridgeModule&gt;
+
++ @property (nonatomic, copy, readonly, nullable) NSString *stripePublishableKey;
+
+ - (instancetype)initWithUserID:(NSString *)userID
+           authenticationToken:(NSString *)token
+                     sentryDSN:(nullable NSString *)sentryDSN
++         stripePublishableKey:(NSString *)stripePublishableKey
+              googleMapsAPIKey:(nullable NSString *)googleAPIKey
+                    gravityURL:(NSString *)gravity
+                metaphysicsURL:(NSString *)metaphysics
+                     userAgent:(NSString *)userAgent;
+</code></pre>
+
+<p><code>AREmission</code>'s implementation (.m) needs to be configured to take this new key- It will be exported to our React Native components as <code>Emission</code>. We make our initializer match the signature defined in the header (.h) file, and add an instance <code>_stripePublishableKey</code> to match the <code>@property</code> declaration.</p>
+
+<p><a href="https://github.com/artsy/emission/blob/4a2a3e9260e97d791536cf38376a06b0ad0946a8/Pod/Classes/Core/AREmission.m#L24-L60">/Pod/Classes/Core/AREmission.m</a>:</p>
+
+<pre><code class="diff"> @implementation AREmissionConfiguration
+ RCT_EXPORT_MODULE(Emission);
+ # ...
+
+ - (NSDictionary *)constantsToExport
+ {
+   return @{
++    @"stripePublishableKey": self.stripePublishableKey ?: @"",
+     # ...lots more
+   };
+ }
+
+ - (instancetype)initWithUserID:(NSString *)userID
+            authenticationToken:(NSString *)token
+                      sentryDSN:(NSString *)sentryDSN
++          stripePublishableKey:(NSString *)stripePublishableKey
+               googleMapsAPIKey:(NSString *)googleAPIKey
+                     gravityURL:(NSString *)gravity
+                 metaphysicsURL:(NSString *)metaphysics
+                      userAgent:(nonnull NSString *)userAgent
+ {
+     self = [super init];
+     _userID = [userID copy];
++    _stripePublishableKey = [stripePublishableKey copy];
+     # ... More copies...
+     return self;
+ }
+</code></pre>
+
+<p><em>Why is <code>copy</code> needed at all? See <a href="https://stackoverflow.com/questions/387959/nsstring-property-copy-or-retain/388002#388002">here</a>.</em></p>
+
+<hr />
+
+<a name="L3..Configure.the.example.app.to.expose.the.new.key.to.our.library"></a>
+<h4>3. Configure the example app to expose the new key to our library</h4>
+
+<p>After making sure we have imported the keys from <code>cocoapods-keys</code> we update Emission's setup to use the new initializer signature we defined above.</p>
+
+<p><a href="https://github.com/artsy/emission/blob/4a2a3e9260e97d791536cf38376a06b0ad0946a8/Example/Emission/AppDelegate.m#L109">Example/Emission/AppDelegate.m</a>:</p>
+
+<pre><code class="diff">#import &lt;Keys/EmissionKeys.h&gt;
+
+  - (void)setupEmissionWithUserID:(NSString *)userID accessToken:(NSString *)accessToken keychainService:(NSString *)service;
+  {
+    # ...
+     AREmissionConfiguration *config = [[AREmissionConfiguration alloc]
+      initWithUserID:userID
+      authenticationToken:accessToken
+      sentryDSN:nil
++     stripePublishableKey:keys.stripePublishableKey
+      googleMapsAPIKey:nil
+      gravityURL:setup.gravityURL
+      metaphysicsURL:setup.metaphysicsURL
+      userAgent:@"Emission Example"];
+    # ...
+</code></pre>
+
+<hr />
+
+<a name="L4..Use.that.configured.key.in.a.React.Native.component."></a>
+<h4>4. Use that configured key in a React Native component.</h4>
+
+<p><code>Emission</code> is now exposed along with its configured keys via React Native's <a href="https://facebook.github.io/react-native/docs/native-modules-ios.html">NativeModules</a>.</p>
+
+<p><a href="https://github.com/artsy/emission/blob/4a2a3e9260e97d791536cf38376a06b0ad0946a8/src/lib/components/bidding/screens/confirmfirsttimebid.tsx#l31">src/lib/Components/Bidding/Screens/ConfirmFirstTimeBid.tsx</a>:</p>
+
+<pre><code class="js">import { NativeModules } from "react-native";
+const Emission = NativeModules.Emission || {};
+
+stripe.setOptions({
+  publishableKey: Emission.stripePublishableKey
+});
+</code></pre>
+
+<!--
+Cᴏɴᴄʟᴜsɪᴏɴ
+-->
+
+
+<p>That's it! Compared to a familiar dotenv file, <strong>it</strong> certainly means a bit more ceremony here, but we are working through React Native code, its containing Pod <em>and</em> a consuming app. The process is more complicated, but it's also a nice overview of some fundamentals of Objective-C, iOS development and bridging the gap between react and mobile native code.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Augmenting Artworks: AR at Artsy]]></title>
+    <link href="http://artsy.github.io/blog/2018/03/18/ar/"/>
+    <updated>2018-03-18T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/03/18/ar</id>
+    <content type="html"><![CDATA[<p>In 2017, Apple released ARKit to universal acclaim. It's a solid foundation for application developers to build
+Augmented Reality (AR) experiences without learning a whole new skillset in computer vision. Like a lot of Apple's
+technology, it's a clever blend of existing projects: <a href="https://developer.apple.com/documentation/scenekit">SceneKit</a>, <a href="https://developer.apple.com/documentation/coremotion">CoreMotion</a>, <a href="https://developer.apple.com/documentation/coreml">CoreML</a> and some very
+clever camera work. From the developer's perspective, ARKit has an API which fits perfectly with the rest of Apple's
+APIs. You spend most of your time working with a few delegate functions and you're good to go.</p>
+
+<p>For the last 2 months, I've been working with ARKit on a replacement for our <a href="https://ortastuff.s3.amazonaws.com/vids/eigen-vir.mp4">View in Room</a> feature on modern
+iOS devices to support a "View in <em>My</em> Room". I'm going to try cover how we approached the project, the abstractions we
+created and give you a run through of how it works.</p>
+
+<p>We believe that our implementation is a solid improvement over similar features in other apps that allow users to place
+artworks on walls, and we're making <a href="https://github.com/artsy/eigen/tree/f897b3438bd07470bd88a790fc6d6a524f5756cb/Artsy/View_Controllers/ARVIR">the source code available</a> free and open-source under the MIT
+license.</p>
+
+<!-- more -->
+
+
+
+
+<div class="mobile-only">
+<p>
+  <strong>Before you get started</strong>, it looks like you're using a really small screen, 
+  this post is built with larger screens in mind. You will be missing interactable elements which you <strong>really should see</strong>.
+</p>
+</div>
+
+
+<a name="How.does.ARKit.work."></a>
+<h2>How does ARKit work?</h2>
+
+<p>You start up ARKit by creating an <a href="https://developer.apple.com/documentation/arkit/arsession">AR Session</a> and passing it to an view on your screen. This will trigger
+ARKit to open your camera looking through the phone's camera for reference points to determine where the phone is in the
+world. Your app will use the reference points to attach SceneKit objects to places through the AR viewport. Let's look
+at this as a diagram:</p>
+
+<p><article class="diagram"></p>
+
+<div style='flex:1;'>
+  <ol class="workflow" data-id="What-is-AR">
+    <li>You have a phone in a room</li>
+    <li>ARSession starts</li>
+    <li>It detects some feature points</li>
+    <li>You can then attach objects to those points</li>
+  </ul>
+</div>
+
+
+<div style='flex:1'><?xml version="1.0" encoding="UTF-8"?>
+<svg width="530px" height="460px" viewBox="0 0 530 460" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 47.1 (45422) - http://www.bohemiancoding.com/sketch -->
+    <title>What is AR</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <radialGradient cx="73.2212612%" cy="27.1693638%" fx="73.2212612%" fy="27.1693638%" r="207.875515%" id="radialGradient-1">
+            <stop stop-color="#FFFFFF" offset="0%"></stop>
+            <stop stop-color="#000000" offset="100%"></stop>
+        </radialGradient>
+        <path d="M5.24032834,2.21494006 L10.0175781,0.45921461 L10.0175781,0.45921461 C13.878629,-0.959791237 18.1589608,1.01987744 19.5779666,4.88092836 C19.8803845,5.7037938 20.0351562,6.57358786 20.0351562,7.45026573 L20.0351562,38.1425845 L20.0351562,38.1425845 C20.0351562,41.4875521 17.9540723,44.4794008 14.8180048,45.6429681 L10.0175781,47.4240584 L10.0175781,47.4240584 C6.16921751,48.8519059 1.89200567,46.8896924 0.464158083,43.0413318 C0.157173464,42.2139413 8.98985986e-15,41.3384898 8.8817842e-15,40.4559851 C5.28025569e-15,32.0110213 2.64012785e-15,23.5660575 0,15.1210938 C1.84503416e-15,13.3220232 3.69006831e-15,11.5229527 5.53510247e-15,9.72388222 L7.10542736e-15,9.72388222 C9.6736429e-15,6.36986699 2.09219005,3.37193766 5.24032834,2.21494006 Z" id="path-2"></path>
+        <path d="M5.24032834,3.21494006 L10.0175781,1.45921461 L10.0175781,1.45921461 C13.878629,0.0402087634 18.1589608,2.01987744 19.5779666,5.88092836 C19.8803845,6.7037938 20.0351562,7.57358786 20.0351562,8.45026573 L20.0351562,39.1425845 L20.0351562,39.1425845 C20.0351562,42.4875521 17.9540723,45.4794008 14.8180048,46.6429681 L10.0175781,48.4240584 L10.0175781,48.4240584 C6.16921751,49.8519059 1.89200567,47.8896924 0.464158083,44.0413318 C0.157173464,43.2139413 8.98985986e-15,42.3384898 8.8817842e-15,41.4559851 C5.28025569e-15,33.0110213 2.64012785e-15,24.5660575 0,16.1210938 C1.84503416e-15,14.3220232 3.69006831e-15,12.5229527 5.53510247e-15,10.7238822 L7.10542736e-15,10.7238822 C9.6736429e-15,7.36986699 2.09219005,4.37193766 5.24032834,3.21494006 Z" id="path-3"></path>
+    </defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="What-is-AR">
+            <g id="0-4_room" transform="translate(18.000000, 14.000000)">
+                <polyline id="Path-2" stroke="#BCEBED" stroke-width="2" transform="translate(250.949219, 301.207031) scale(1, -1) translate(-250.949219, -301.207031) " points="0 290.9375 198.996094 360.277344 501.898438 242.136719"></polyline>
+                <path d="M200,0.5 L200,242.5" id="Path-3" stroke="#BCEBED" stroke-width="2"></path>
+                <polygon id="Path" stroke="#80D7DA" stroke-width="4" points="1 64.6445313 200.320312 1 502.441406 112.097656 502.441406 360.867188 312.496094 433.988281 1 313.414062"></polygon>
+            </g>
+            <g id="0-4_balls" transform="translate(101.000000, 253.000000)" fill="url(#radialGradient-1)">
+                <circle id="Oval" cx="28" cy="61" r="28"></circle>
+                <circle id="Oval-Copy" cx="75.5" cy="18.5" r="18.5"></circle>
+            </g>
+            <g id="2-4_camera" transform="translate(60.000000, 41.000000)" fill-opacity="0.179630888" fill="#F5A623">
+                <path d="M280.613281,208.308594 L228.488281,36.859375 L158.785156,0.5 L0.89453125,49.28125 L0.89453125,266.316406 L39.9960938,282.289063 C51.9153646,268.739583 60.2330729,263.415365 64.9492188,266.316406 C72.0234375,270.667969 79.0976562,285.667969 72.0234375,292.890625 C67.3072917,297.705729 75.7643229,303.733073 97.3945312,310.972656 L273.246094,253.71875 L280.613281,208.308594 Z" id="Path-5"></path>
+            </g>
+            <g id="3-4_features" transform="translate(108.000000, 211.000000)" fill="#E2D52A">
+                <circle id="Oval-2" cx="45" cy="99" r="4"></circle>
+                <circle id="Oval-2" cx="65" cy="61" r="4"></circle>
+                <circle id="Oval-2" cx="83" cy="69" r="4"></circle>
+                <circle id="Oval-2" cx="14" cy="85" r="4"></circle>
+                <circle id="Oval-2" cx="25" cy="81" r="4"></circle>
+                <circle id="Oval-2" cx="131.5" cy="94.5" r="3.5"></circle>
+                <ellipse id="Path" cx="135.5" cy="79" rx="3.5" ry="4"></ellipse>
+                <circle id="Oval-2" cx="29" cy="97" r="4"></circle>
+                <circle id="Oval-2" cx="97" cy="60" r="3"></circle>
+                <circle id="Oval-2" cx="105.5" cy="78.5" r="3.5"></circle>
+                <circle id="Oval-2" cx="65" cy="117" r="4"></circle>
+                <circle id="Oval-2" cx="113" cy="3" r="3"></circle>
+                <circle id="Oval-2" cx="101" cy="23" r="3"></circle>
+                <circle id="Oval-2-Copy" cx="84" cy="12" r="3"></circle>
+                <circle id="Oval-2-Copy-2" cx="76" cy="48" r="3"></circle>
+                <circle id="Oval-2-Copy-3" cx="64" cy="29" r="3"></circle>
+                <circle id="Oval-2-Copy-4" cx="40" cy="39" r="3"></circle>
+                <circle id="Oval-2-Copy-5" cx="48" cy="20" r="3"></circle>
+                <circle id="Oval-2-Copy-6" cx="83" cy="29" r="3"></circle>
+                <circle id="Oval-2-Copy-7" cx="25" cy="60" r="3"></circle>
+                <circle id="Oval-2-Copy-8" cx="3" cy="58" r="3"></circle>
+                <circle id="Oval-2" cx="121" cy="39" r="3"></circle>
+                <circle id="Oval-2" cx="97" cy="42" r="3"></circle>
+                <circle id="Oval-2" cx="37" cy="117" r="4"></circle>
+            </g>
+            <g id="1-4_phone" transform="translate(325.000000, 247.000000)">
+                <g id="Rectangle">
+                    <use fill="#3A3A3A" fill-rule="evenodd" xlink:href="#path-2"></use>
+                    <path stroke="#979797" stroke-width="1" d="M5.41280781,2.68424895 C2.46142817,3.7689342 0.5,6.57949295 0.5,9.72388222 L0.5,40.4559851 C0.5,41.2791197 0.646599691,42.0956756 0.932932058,42.8674038 C2.26472184,46.4568677 6.2541862,48.2870742 9.84365009,46.9552844 L14.6440767,45.1741941 C17.58414,44.0833498 19.5351562,41.2784917 19.5351562,38.1425845 L19.5351562,7.45026573 C19.5351562,6.6324392 19.3907743,5.82103436 19.1086577,5.05340784 C17.7849097,1.45154906 13.7919164,-0.395224566 10.1900576,0.928523495 L5.41280781,2.68424895 Z"></path>
+                </g>
+                <g id="Rectangle">
+                    <use fill="#353535" fill-rule="evenodd" xlink:href="#path-3"></use>
+                    <path stroke="#979797" stroke-width="1" d="M5.41280781,3.68424895 C2.46142817,4.7689342 0.5,7.57949295 0.5,10.7238822 L0.5,41.4559851 C0.5,42.2791197 0.646599691,43.0956756 0.932932058,43.8674038 C2.26472184,47.4568677 6.2541862,49.2870742 9.84365009,47.9552844 L14.6440767,46.1741941 C17.58414,45.0833498 19.5351562,42.2784917 19.5351562,39.1425845 L19.5351562,8.45026573 C19.5351562,7.6324392 19.3907743,6.82103436 19.1086577,6.05340784 C17.7849097,2.45154906 13.7919164,0.604775434 10.1900576,1.92852349 L5.41280781,3.68424895 Z"></path>
+                </g>
+            </g>
+            <g id="4-4_anchors" transform="translate(146.000000, 86.000000)">
+                <path d="M26.1171875,153.894531 L26.1171875,75" id="Path-4" stroke="#000000" stroke-width="2" stroke-dasharray="2,2"></path>
+                <polygon id="Path-6" stroke="#000000" points="0.359375 15.109375 44.578125 0.50390625 44.578125 67.8945313 0.359375 84.4160156"></polygon>
+                <circle id="Oval-2-Copy-3" fill="#000000" cx="26" cy="153" r="3"></circle>
+            </g>
+        </g>
+    </g>
+</svg></div>
+
+
+<p></article></p>
+
+<p>With ARKit at release in iOS 11.0, if enough feature points are detected in a series horizontally, then ARKit will also
+send you some information about the what it considers to be a horizontal plane.</p>
+
+<p>Planes are what most AR apps use on iOS, the apps react to discovering a flat horizontal surface and then allows putting
+3d objects on to it. You would then interact with these object by doing a hit test for the closest plane or feature
+point to handle user interactions.</p>
+
+<a name="Quick.glossary"></a>
+<h3>Quick glossary</h3>
+
+<ul>
+<li><p><a href="https://developer.apple.com/documentation/arkit/arframe/2887449-rawfeaturepoints">Feature Point</a> - A physical point of reference created by ARKit. A feature point is found in a frame of the
+camera's image. The point is converted into a 3D world coordinate space by image analysis that ARKit performs to track
+the device's position, orientation, and movement. Taken together, these points roughly correlate to real-world objects
+through the view of the camera.</p></li>
+<li><p><a href="https://developer.apple.com/documentation/arkit/aranchor">Anchor</a> - An anchor is a developer tool for building on top of feature points. Anchors allow connections
+between a real-world object and an augmented-reality object. Effectively, this provides the API to place objects in
+"the room."</p></li>
+<li><p><a href="https://developer.apple.com/documentation/arkit/arplaneanchor">Plane</a> - An anchor to a rectangle in 3D space. A set of feature points detected in a continuous direction. You
+can request for ARKit to find these for you, and common examples are tables, floors and walls.</p></li>
+<li><p><a href="https://developer.apple.com/documentation/arkit/arskview/2875733-hittest">Hit Test</a> - Projects a line through the world from a location on the screen and oriented with the phone's world
+position and angle. This gives you a list of objects that intersect the line.</p></li>
+</ul>
+
+
+<a name="AR.at.Artsy"></a>
+<h2>AR at Artsy</h2>
+
+<p>We did some interesting work in the AR space already in 2017 with Microsoft, Studio Drift and the Armory Show using <a href="http://fortune.com/2017/03/02/microsoft-hololens-art-show/">the
+Holo Lens</a>. When ARKit came out, we explored whether we could reliably place an artwork on a wall, but came
+to the conclusion that the technology was a bit too immature for us to build it reliably. The core problem was that
+ARKit at release could only be used to find horizontal planes.</p>
+
+<p>Here's how our original approach worked:</p>
+
+<p><article class="desktop-only" style='display: flex; flex-flow:row; margin: 0px -60px;'></p>
+
+<div style='flex:1;'>
+  <ol class="workflow" data-id="v1">
+    <li>Open up ARKit and let it discover the world</li>
+    <li>Detect the edge of a floor by asking a user to point at the floor near the wall</li>
+    <li>Find the edge furthest away</li>
+    <li>Attach a work to the floor closest to the wall</li>
+  </ul>
+</div>
+
+
+<div style='flex:1'><?xml version="1.0" encoding="UTF-8"?>
+<svg width="530px" height="460px" viewBox="0 0 530 460" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 47.1 (45422) - http://www.bohemiancoding.com/sketch -->
+    <title>v1</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <path d="M15.5931447,21.0693125 L20.3703944,19.313587 L20.3703944,19.313587 C24.2314454,17.8945812 28.5117771,19.8742499 29.9307829,23.7353008 C30.2332008,24.5581662 30.3879726,25.4279603 30.3879726,26.3046382 L30.3879726,56.9969569 L30.3879726,56.9969569 C30.3879726,60.3419246 28.3068886,63.3337733 25.1708211,64.4973405 L20.3703944,66.2784308 L20.3703944,66.2784308 C16.5220338,67.7062784 12.244822,65.7440649 10.8169744,61.8957043 C10.5099898,61.0683138 10.3528163,60.1928622 10.3528163,59.3103575 C10.3528163,50.8653937 10.3528163,42.42043 10.3528163,33.9754662 C10.3528163,32.1763957 10.3528163,30.3773252 10.3528163,28.5782547 L10.3528163,28.5782547 C10.3528163,25.2242394 12.4450064,22.2263101 15.5931447,21.0693125 Z" id="path-1"></path>
+    </defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="v1">
+            <g id="0-4_room" transform="translate(18.000000, 14.000000)">
+                <polyline id="Path-2" stroke="#BCEBED" stroke-width="2" transform="translate(250.949219, 301.207031) scale(1, -1) translate(-250.949219, -301.207031) " points="0 290.9375 198.996094 360.277344 501.898438 242.136719"></polyline>
+                <path d="M200,0.5 L200,242.5" id="Path-3" stroke="#BCEBED" stroke-width="2"></path>
+                <polygon id="Path" stroke="#80D7DA" stroke-width="4" points="1 64.6445313 200.320312 1 502.441406 112.097656 502.441406 360.867188 312.496094 433.988281 1 313.414062"></polygon>
+            </g>
+            <g id="2-4_camera" transform="translate(60.000000, 235.000000)">
+                <polygon id="Path-5" fill-opacity="0.179630888" fill="#F5A623" points="228.488281 36.859375 158.785156 0.5 0.89453125 49.28125 0.89453125 76.3164063 29.2070312 95.1445313 131.007812 108.998047 220.933594 92.2890625"></polygon>
+                <polygon id="Path-2" stroke="#E2D52A" stroke-width="2" fill-opacity="0.27100317" fill="#E2D52A" transform="translate(132.255859, 63.898437) scale(1, -1) translate(-132.255859, -63.898437) " points="38.3632813 58.0195312 158.996094 100.660156 226.148438 74.03125 98.1503906 27.1367187"></polygon>
+            </g>
+            <g id="2-4_features" transform="translate(89.000000, 260.000000)" fill="#E2D52A">
+                <circle id="Oval-2" cx="66" cy="66" r="4"></circle>
+                <circle id="Oval-2" cx="86" cy="28" r="4"></circle>
+                <circle id="Oval-2" cx="104" cy="36" r="4"></circle>
+                <circle id="Oval-2" cx="35" cy="52" r="4"></circle>
+                <circle id="Oval-2" cx="46" cy="48" r="4"></circle>
+                <circle id="Oval-2" cx="152.5" cy="61.5" r="3.5"></circle>
+                <ellipse id="Path" cx="156.5" cy="46" rx="3.5" ry="4"></ellipse>
+                <circle id="Oval-2" cx="50" cy="64" r="4"></circle>
+                <circle id="Oval-2" cx="118" cy="27" r="3"></circle>
+                <circle id="Oval-2" cx="126.5" cy="45.5" r="3.5"></circle>
+                <circle id="Oval-2" cx="107" cy="69" r="4"></circle>
+                <circle id="Oval-2" cx="83" cy="49" r="3"></circle>
+                <circle id="Oval-2-Copy-2" cx="97" cy="15" r="3"></circle>
+                <circle id="Oval-2-Copy-3" cx="71" cy="24" r="3"></circle>
+                <circle id="Oval-2-Copy-4" cx="65" cy="32" r="3"></circle>
+                <circle id="Oval-2-Copy-6" cx="130" cy="3" r="3"></circle>
+                <circle id="Oval-2-Copy-7" cx="46" cy="27" r="3"></circle>
+                <circle id="Oval-2-Copy-8" cx="16" cy="43" r="3"></circle>
+                <circle id="Oval-2" cx="142" cy="6" r="3"></circle>
+                <circle id="Oval-2" cx="118" cy="9" r="3"></circle>
+                <circle id="Oval-2" cx="4" cy="53" r="4"></circle>
+            </g>
+            <g id="1-4_phone" transform="translate(257.431048, 288.284945) rotate(-37.000000) translate(-257.431048, -288.284945) translate(246.931048, 264.284945)"></g>
+            <g id="0-4_person" transform="translate(238.000000, 241.000000)">
+                <g id="Rectangle" transform="translate(20.370394, 42.799490) rotate(-29.000000) translate(-20.370394, -42.799490) ">
+                    <use fill="#353535" fill-rule="evenodd" xlink:href="#path-1"></use>
+                    <path stroke="#979797" stroke-width="1" d="M15.7656241,21.5386214 C12.8142445,22.6233066 10.8528163,25.4338654 10.8528163,28.5782547 L10.8528163,59.3103575 C10.8528163,60.1334921 10.999416,60.950048 11.2857484,61.7217762 C12.6175382,65.3112401 16.6070025,67.1414466 20.1964664,65.8096568 L24.996893,64.0285666 C27.9369564,62.9377223 29.8879726,60.1328641 29.8879726,56.9969569 L29.8879726,26.3046382 C29.8879726,25.4868116 29.7435906,24.6754068 29.4614741,23.9077803 C28.137726,20.3059215 24.1447327,18.4591479 20.5428739,19.7828959 L15.7656241,21.5386214 Z"></path>
+                </g>
+                <path d="M57.8662109,54.2951339 C57.2197037,47.2391468 56.4052506,43.8266412 55.4228516,44.0576172 C49.9941406,45.3339844 42.5444721,9.38688117 44.8359375,6.22265625 C48.6060532,1.01660156 83.0625,-7.31651228 81.84375,16.3310547 C81.03125,32.0960993 77.9322917,44.7507924 72.546875,54.2951339 C80.7701069,49.2018936 86.1395731,46.6552734 88.6552734,46.6552734 C92.428824,46.6552734 95.2041008,52.8013269 94.8476562,55.4792972 C94.6100265,57.2646107 93.5517583,70.7331002 91.6728516,95.8847656 C83.9235026,105.734375 75.6959635,110.609701 66.9902344,110.510742 C53.9316406,110.362305 41.5716684,104.533615 39.8232422,101.063477 C38.6576247,98.7500512 36.6400466,83.5553248 33.7705078,55.4792972 L36.8642578,46.6552734 L57.8662109,54.2951339 Z" id="Path-7" fill="#80D7DA"></path>
+            </g>
+            <g id="4-4_anchors" transform="translate(151.000000, 124.000000)">
+                <path d="M26.1171875,153.894531 L26.1171875,75" id="Path-4" stroke="#000000" stroke-width="2" stroke-dasharray="2,2"></path>
+                <path d="M26.1171875,153.894531 L89,153.894531" id="Path-4" stroke="#000000" stroke-width="2" stroke-dasharray="2,2"></path>
+                <polygon id="Path-6" stroke="#000000" points="0.359375 15.109375 44.578125 0.50390625 44.578125 67.8945313 0.359375 84.4160156"></polygon>
+                <circle id="Oval-2-Copy-3" fill="#000000" cx="26" cy="153" r="3"></circle>
+            </g>
+            <g id="3-4_line" transform="translate(98.000000, 263.000000)" stroke="#000000" stroke-width="2" stroke-dasharray="2,2">
+                <path d="M0,39.7773437 L123,0" id="Path-4"></path>
+            </g>
+        </g>
+    </g>
+</svg></div>
+
+
+<p></article></p>
+
+<p>This could work, but it was hard to explain for a first time user. A user spent most of their time with their phone
+pointed at the floor, then we had no way to know if feature points had been detected all the way to the floor edges.</p>
+
+<p>From there, we experimented with using the location of the iPhone as a point of reference:</p>
+
+<p><article class="desktop-only" style='display: flex; flex-flow:row; margin: 0px -60px;'></p>
+
+<div style='flex:1;'>
+  <ol class="workflow" data-id="v2">
+  <li>Open up ARKit and let it discover the world</li>
+  <li>Ask a user to put their phone against the wall</li>
+  <li>When the camera is fully osbscured, use the last known point as an anchor</li>
+  <li>When the user pulls back and reconnects, place the work</li>
+  </ul>
+</div>
+
+
+<div style='flex:1'><?xml version="1.0" encoding="UTF-8"?>
+<svg width="530px" height="460px" viewBox="0 0 530 460" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 47.1 (45422) - http://www.bohemiancoding.com/sketch -->
+    <title>v2</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <path d="M9.24616479,13.5906941 L14.0234146,11.8349687 L14.0234146,11.8349687 C17.8844655,10.4159628 22.1647972,12.3956315 23.5838031,16.2566824 C23.886221,17.0795478 24.0409927,17.9493419 24.0409927,18.8260198 L24.0409927,49.5183386 L24.0409927,49.5183386 C24.0409927,52.8633062 21.9599088,55.8551549 18.8238412,57.0187222 L14.0234146,58.7998124 L14.0234146,58.7998124 C10.175054,60.22766 5.89784212,58.2654465 4.46999453,54.4170859 C4.16300992,53.5896954 4.00583645,52.7142438 4.00583645,51.8317391 C4.00583645,43.3867753 4.00583645,34.9418116 4.00583645,26.4968478 C4.00583645,24.6977773 4.00583645,22.8987068 4.00583645,21.0996363 L4.00583645,21.0996363 C4.00583645,17.745621 6.0980265,14.7476917 9.24616479,13.5906941 Z" id="path-1"></path>
+        <path d="M9.24616479,13.5906941 L14.0234146,11.8349687 L14.0234146,11.8349687 C17.8844655,10.4159628 22.1647972,12.3956315 23.5838031,16.2566824 C23.886221,17.0795478 24.0409927,17.9493419 24.0409927,18.8260198 L24.0409927,49.5183386 L24.0409927,49.5183386 C24.0409927,52.8633062 21.9599088,55.8551549 18.8238412,57.0187222 L14.0234146,58.7998124 L14.0234146,58.7998124 C10.175054,60.22766 5.89784212,58.2654465 4.46999453,54.4170859 C4.16300992,53.5896954 4.00583645,52.7142438 4.00583645,51.8317391 C4.00583645,43.3867753 4.00583645,34.9418116 4.00583645,26.4968478 C4.00583645,24.6977773 4.00583645,22.8987068 4.00583645,21.0996363 L4.00583645,21.0996363 C4.00583645,17.745621 6.0980265,14.7476917 9.24616479,13.5906941 Z" id="path-2"></path>
+        <path d="M5.24032834,2.21494006 L10.0175781,0.45921461 L10.0175781,0.45921461 C13.878629,-0.959791237 18.1589608,1.01987744 19.5779666,4.88092836 C19.8803845,5.7037938 20.0351562,6.57358786 20.0351562,7.45026573 L20.0351562,38.1425845 L20.0351562,38.1425845 C20.0351562,41.4875521 17.9540723,44.4794008 14.8180048,45.6429681 L10.0175781,47.4240584 L10.0175781,47.4240584 C6.16921751,48.8519059 1.89200567,46.8896924 0.464158083,43.0413318 C0.157173464,42.2139413 8.98985986e-15,41.3384898 8.8817842e-15,40.4559851 C5.28025569e-15,32.0110213 2.64012785e-15,23.5660575 0,15.1210938 C1.84503416e-15,13.3220232 3.69006831e-15,11.5229527 5.53510247e-15,9.72388222 L7.10542736e-15,9.72388222 C9.6736429e-15,6.36986699 2.09219005,3.37193766 5.24032834,2.21494006 Z" id="path-3"></path>
+        <path d="M5.24032834,2.21494006 L10.0175781,0.45921461 L10.0175781,0.45921461 C13.878629,-0.959791237 18.1589608,1.01987744 19.5779666,4.88092836 C19.8803845,5.7037938 20.0351562,6.57358786 20.0351562,7.45026573 L20.0351562,38.1425845 L20.0351562,38.1425845 C20.0351562,41.4875521 17.9540723,44.4794008 14.8180048,45.6429681 L10.0175781,47.4240584 L10.0175781,47.4240584 C6.16921751,48.8519059 1.89200567,46.8896924 0.464158083,43.0413318 C0.157173464,42.2139413 8.98985986e-15,41.3384898 8.8817842e-15,40.4559851 C5.28025569e-15,32.0110213 2.64012785e-15,23.5660575 0,15.1210938 C1.84503416e-15,13.3220232 3.69006831e-15,11.5229527 5.53510247e-15,9.72388222 L7.10542736e-15,9.72388222 C9.6736429e-15,6.36986699 2.09219005,3.37193766 5.24032834,2.21494006 Z" id="path-4"></path>
+        <mask id="mask-5" maskContentUnits="userSpaceOnUse" maskUnits="objectBoundingBox" x="0" y="0" width="20.0351562" height="47.8902345" fill="white">
+            <use xlink:href="#path-4"></use>
+        </mask>
+        <path d="M5.24032834,2.21494006 L10.0175781,0.45921461 L10.0175781,0.45921461 C13.878629,-0.959791237 18.1589608,1.01987744 19.5779666,4.88092836 C19.8803845,5.7037938 20.0351562,6.57358786 20.0351562,7.45026573 L20.0351562,38.1425845 L20.0351562,38.1425845 C20.0351562,41.4875521 17.9540723,44.4794008 14.8180048,45.6429681 L10.0175781,47.4240584 L10.0175781,47.4240584 C6.16921751,48.8519059 1.89200567,46.8896924 0.464158083,43.0413318 C0.157173464,42.2139413 8.98985986e-15,41.3384898 8.8817842e-15,40.4559851 C5.28025569e-15,32.0110213 2.64012785e-15,23.5660575 0,15.1210938 C1.84503416e-15,13.3220232 3.69006831e-15,11.5229527 5.53510247e-15,9.72388222 L7.10542736e-15,9.72388222 C9.6736429e-15,6.36986699 2.09219005,3.37193766 5.24032834,2.21494006 Z" id="path-6"></path>
+    </defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="v2">
+            <g id="0-4_room" transform="translate(18.000000, 14.000000)">
+                <polyline id="Path-2" stroke="#BCEBED" stroke-width="2" transform="translate(250.949219, 301.207031) scale(1, -1) translate(-250.949219, -301.207031) " points="0 290.9375 198.996094 360.277344 501.898438 242.136719"></polyline>
+                <path d="M200,0.5 L200,242.5" id="Path-3" stroke="#BCEBED" stroke-width="2"></path>
+                <polygon id="Path" stroke="#80D7DA" stroke-width="4" points="1 64.6445313 200.320312 1 502.441406 112.097656 502.441406 360.867188 312.496094 433.988281 1 313.414062"></polygon>
+            </g>
+            <g id="1-1_camera" transform="translate(47.000000, 93.000000)" fill-opacity="0.179630888" fill="#F5A623">
+                <path d="M202.794922,125.993164 L193.664063,0.98828125 L0.509765625,63.03125 L13.8945312,218.316406 L42.2070312,237.144531 L144.007812,250.998047 L233.933594,234.289063 C246.292625,217.862243 249.991193,201.020446 245.029297,183.763672 C240.067401,166.506898 225.989276,147.250062 202.794922,125.993164 Z" id="Path-5"></path>
+            </g>
+            <g id="2-2_camera" transform="translate(100.000000, 157.000000)" fill-opacity="0.179630888" fill="#F5A623">
+                <polygon id="Path-5" points="98.3828125 35.6894531 85.1152344 0.529296875 13.2519531 20.7773438 0.330078125 86.7519531 59.4433594 106.298828 79.1210937 101.582031 107.460937 104.070313"></polygon>
+            </g>
+            <g id="1-4_features" transform="translate(75.000000, 148.000000)" fill="#E2D52A">
+                <circle id="Oval-2" cx="80" cy="178" r="4"></circle>
+                <circle id="Oval-2" cx="100" cy="140" r="4"></circle>
+                <circle id="Oval-2" cx="118" cy="148" r="4"></circle>
+                <circle id="Oval-2" cx="49" cy="164" r="4"></circle>
+                <circle id="Oval-2-Copy-10" cx="4" cy="64" r="4"></circle>
+                <circle id="Oval-2" cx="60" cy="160" r="4"></circle>
+                <circle id="Oval-2-Copy" cx="33" cy="72" r="4"></circle>
+                <circle id="Oval-2-Copy-5" cx="67" cy="97" r="4"></circle>
+                <circle id="Oval-2-Copy-9" cx="80" cy="80" r="4"></circle>
+                <circle id="Oval-2" cx="166.5" cy="173.5" r="3.5"></circle>
+                <circle id="Oval-2-Copy-13" cx="66.5" cy="60.5" r="3.5"></circle>
+                <circle id="Oval-2-Copy-14" cx="22.5" cy="118.5" r="3.5"></circle>
+                <ellipse id="Path" cx="170.5" cy="158" rx="3.5" ry="4"></ellipse>
+                <circle id="Oval-2" cx="64" cy="176" r="4"></circle>
+                <circle id="Oval-2" cx="132" cy="139" r="3"></circle>
+                <circle id="Oval-2" cx="140.5" cy="157.5" r="3.5"></circle>
+                <circle id="Oval-2" cx="121" cy="181" r="4"></circle>
+                <circle id="Oval-2-Copy-12" cx="133" cy="4" r="4"></circle>
+                <circle id="Oval-2" cx="97" cy="161" r="3"></circle>
+                <circle id="Oval-2-Copy-2" cx="111" cy="127" r="3"></circle>
+                <circle id="Oval-2-Copy-3" cx="85" cy="136" r="3"></circle>
+                <circle id="Oval-2-Copy-4" cx="79" cy="144" r="3"></circle>
+                <circle id="Oval-2-Copy-6" cx="144" cy="115" r="3"></circle>
+                <circle id="Oval-2-Copy-7" cx="60" cy="139" r="3"></circle>
+                <circle id="Oval-2-Copy-8" cx="30" cy="155" r="3"></circle>
+                <circle id="Oval-2" cx="156" cy="118" r="3"></circle>
+                <circle id="Oval-2" cx="132" cy="121" r="3"></circle>
+                <circle id="Oval-2" cx="18" cy="165" r="4"></circle>
+                <circle id="Oval-2-Copy-11" cx="64" cy="34" r="4"></circle>
+            </g>
+            <g id="1-2_phone" transform="translate(257.431048, 288.284945) rotate(-37.000000) translate(-257.431048, -288.284945) translate(246.931048, 264.284945)"></g>
+            <g id="4-4_anchors" transform="translate(140.000000, 173.000000)" stroke="#000000">
+                <path d="M26.1171875,45 L26.1171875,75" id="Path-4" stroke-width="2" stroke-dasharray="2,2"></path>
+                <polygon id="Path-6" points="0.359375 15.109375 44.578125 0.50390625 44.578125 67.8945313 0.359375 84.4160156"></polygon>
+            </g>
+            <g id="4-5_person" transform="translate(252.000000, 241.000000)">
+                <g id="Rectangle">
+                    <use fill="#353535" fill-rule="evenodd" xlink:href="#path-1"></use>
+                    <path stroke="#979797" stroke-width="1" d="M9.41864427,14.060003 C6.46726462,15.1446882 4.50583645,17.955247 4.50583645,21.0996363 L4.50583645,51.8317391 C4.50583645,52.6548737 4.65243614,53.4714297 4.93876851,54.2431578 C6.27055829,57.8326217 10.2600226,59.6628282 13.8494865,58.3310384 L18.6499132,56.5499482 C21.5899765,55.4591039 23.5409927,52.6542457 23.5409927,49.5183386 L23.5409927,18.8260198 C23.5409927,18.0081932 23.3966108,17.1967884 23.1144942,16.4291619 C21.7907461,12.8273031 17.7977528,10.9805295 14.1958941,12.3042775 L9.41864427,14.060003 Z"></path>
+                </g>
+                <path d="M43.8662109,54.2951339 C43.2197037,47.2391468 42.4052506,43.8266412 41.4228516,44.0576172 C35.9941406,45.3339844 28.5444721,9.38688117 30.8359375,6.22265625 C34.6060532,1.01660156 69.0625,-7.31651228 67.84375,16.3310547 C67.03125,32.0960993 63.9322917,44.7507924 58.546875,54.2951339 C66.7701069,49.2018936 72.1395731,46.6552734 74.6552734,46.6552734 C78.428824,46.6552734 81.2041008,52.8013269 80.8476562,55.4792972 C80.6100265,57.2646107 79.5517583,70.7331002 77.6728516,95.8847656 C69.9235026,105.734375 61.6959635,110.609701 52.9902344,110.510742 C39.9316406,110.362305 27.5716684,104.533615 25.8232422,101.063477 C24.6576247,98.7500512 22.6400466,83.5553248 19.7705078,55.4792972 L22.8642578,46.6552734 L43.8662109,54.2951339 Z" id="Path-7" fill="#80D7DA"></path>
+            </g>
+            <g id="0-1_person" transform="translate(252.000000, 241.000000)">
+                <g id="Rectangle">
+                    <use fill="#353535" fill-rule="evenodd" xlink:href="#path-2"></use>
+                    <path stroke="#979797" stroke-width="1" d="M9.41864427,14.060003 C6.46726462,15.1446882 4.50583645,17.955247 4.50583645,21.0996363 L4.50583645,51.8317391 C4.50583645,52.6548737 4.65243614,53.4714297 4.93876851,54.2431578 C6.27055829,57.8326217 10.2600226,59.6628282 13.8494865,58.3310384 L18.6499132,56.5499482 C21.5899765,55.4591039 23.5409927,52.6542457 23.5409927,49.5183386 L23.5409927,18.8260198 C23.5409927,18.0081932 23.3966108,17.1967884 23.1144942,16.4291619 C21.7907461,12.8273031 17.7977528,10.9805295 14.1958941,12.3042775 L9.41864427,14.060003 Z"></path>
+                </g>
+                <path d="M43.8662109,54.2951339 C43.2197037,47.2391468 42.4052506,43.8266412 41.4228516,44.0576172 C35.9941406,45.3339844 28.5444721,9.38688117 30.8359375,6.22265625 C34.6060532,1.01660156 69.0625,-7.31651228 67.84375,16.3310547 C67.03125,32.0960993 63.9322917,44.7507924 58.546875,54.2951339 C66.7701069,49.2018936 72.1395731,46.6552734 74.6552734,46.6552734 C78.428824,46.6552734 81.2041008,52.8013269 80.8476562,55.4792972 C80.6100265,57.2646107 79.5517583,70.7331002 77.6728516,95.8847656 C69.9235026,105.734375 61.6959635,110.609701 52.9902344,110.510742 C39.9316406,110.362305 27.5716684,104.533615 25.8232422,101.063477 C24.6576247,98.7500512 22.6400466,83.5553248 19.7705078,55.4792972 L22.8642578,46.6552734 L43.8662109,54.2951339 Z" id="Path-7" fill="#80D7DA"></path>
+            </g>
+            <g id="2-3_person" transform="translate(183.000000, 203.000000)" fill="#80D7DA">
+                <path d="M24.0957031,53.8487582 C23.4491959,46.7927711 22.6347428,43.3802655 21.6523438,43.6112415 C16.2236328,44.8876087 8.77396432,8.94050549 11.0654297,5.77628056 C14.8355454,0.570225875 49.2919922,-7.76288797 48.0732422,15.884679 C47.2607422,31.6497236 44.1617839,44.3044167 38.7763672,53.8487582 C46.9995991,48.7555179 52.3690653,46.2088977 54.8847656,46.2088977 C58.6583162,46.2088977 61.433593,52.3549512 61.0771484,55.0329215 C60.8395187,56.818235 59.7812505,70.2867245 57.9023438,95.4383899 C50.1529948,105.287999 41.9254557,110.163325 33.2197266,110.064366 C20.1611328,109.915929 7.80116056,104.087239 6.05273438,100.617101 C4.88711692,98.3036755 2.86953879,83.1089491 0,55.0329215 L3.09375,46.2088977 L24.0957031,53.8487582 Z" id="Path-7"></path>
+            </g>
+            <g id="3-3_temp-phone" transform="translate(155.000000, 195.000000)">
+                <g id="Rectangle">
+                    <use fill="#353535" fill-rule="evenodd" xlink:href="#path-3"></use>
+                    <path stroke="#979797" stroke-width="1" d="M5.41280781,2.68424895 C2.46142817,3.7689342 0.5,6.57949295 0.5,9.72388222 L0.5,40.4559851 C0.5,41.2791197 0.646599691,42.0956756 0.932932058,42.8674038 C2.26472184,46.4568677 6.2541862,48.2870742 9.84365009,46.9552844 L14.6440767,45.1741941 C17.58414,44.0833498 19.5351562,41.2784917 19.5351562,38.1425845 L19.5351562,7.45026573 C19.5351562,6.6324392 19.3907743,5.82103436 19.1086577,5.05340784 C17.7849097,1.45154906 13.7919164,-0.395224566 10.1900576,0.928523495 L5.41280781,2.68424895 Z"></path>
+                </g>
+            </g>
+            <g id="4-4_wall" transform="translate(155.000000, 195.000000)" stroke="#000000" stroke-width="2" stroke-dasharray="2">
+                <use id="Rectangle" mask="url(#mask-5)" xlink:href="#path-4"></use>
+            </g>
+            <g id="2-2_phone" transform="translate(163.000000, 203.000000)">
+                <g id="Rectangle">
+                    <use fill="#353535" fill-rule="evenodd" xlink:href="#path-6"></use>
+                    <path stroke="#979797" stroke-width="1" d="M5.41280781,2.68424895 C2.46142817,3.7689342 0.5,6.57949295 0.5,9.72388222 L0.5,40.4559851 C0.5,41.2791197 0.646599691,42.0956756 0.932932058,42.8674038 C2.26472184,46.4568677 6.2541862,48.2870742 9.84365009,46.9552844 L14.6440767,45.1741941 C17.58414,44.0833498 19.5351562,41.2784917 19.5351562,38.1425845 L19.5351562,7.45026573 C19.5351562,6.6324392 19.3907743,5.82103436 19.1086577,5.05340784 C17.7849097,1.45154906 13.7919164,-0.395224566 10.1900576,0.928523495 L5.41280781,2.68424895 Z"></path>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg></div>
+
+
+<p></article></p>
+
+<p>We got this to a point where it was working most of the time. One of the core issues was that there's a lot of
+guess-work at the end of the process. The artwork would usually be at the position of your phone, but it was rarely
+oriented correctly. We experimented by placing the artwork a meter away, but in user testing very few people could do
+that roughly in their head, and we opted to use the exact position of the phone. This meant that you had to move to
+touch the wall, then come back to see if the artwork was placed correctly.</p>
+
+<p>This user flow was hard to explain, and it felt like we weren't setting people up to win. It was quite a debate about
+whether we could ship with this or not because we wanted to ship <a href="https://github.com/artsy/meta/blob/master/meta/what_is_artsy.md#quality-worthy-of-art">Quality worthy of Art</a>. Then we read about the
+upcoming changes in ARKit 1.5. <strong>Vertical plane detection</strong>. Or, <em>mostly</em> wall detection. The debate over whether our
+initial approach was good enough became moot.</p>
+
+<p>With the advent of vertical wall detection, we could change our flow to be a lot like what someone would have thought it
+should be:</p>
+
+<p><article class="desktop-only" style='display: flex; flex-flow:row; margin: 0px -60px;'></p>
+
+<div style='flex:1;'>
+  <ol class="workflow" data-id="v3">
+    <li>Open up ARKit and let it discover the world</li>
+    <li>Ask a user to point at a wall</li>
+    <li>Use the feature detection to detect a plane</li>
+    <li>Use that plane to place an artwork</li>
+  </ul>
+</div>
+
+
+<div style='flex:1'><?xml version="1.0" encoding="UTF-8"?>
+<svg width="530px" height="460px" viewBox="0 0 530 460" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 47.1 (45422) - http://www.bohemiancoding.com/sketch -->
+    <title>v3</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <path d="M15.5931447,21.0693125 L20.3703944,19.313587 L20.3703944,19.313587 C24.2314454,17.8945812 28.5117771,19.8742499 29.9307829,23.7353008 C30.2332008,24.5581662 30.3879726,25.4279603 30.3879726,26.3046382 L30.3879726,56.9969569 L30.3879726,56.9969569 C30.3879726,60.3419246 28.3068886,63.3337733 25.1708211,64.4973405 L20.3703944,66.2784308 L20.3703944,66.2784308 C16.5220338,67.7062784 12.244822,65.7440649 10.8169744,61.8957043 C10.5099898,61.0683138 10.3528163,60.1928622 10.3528163,59.3103575 C10.3528163,50.8653937 10.3528163,42.42043 10.3528163,33.9754662 C10.3528163,32.1763957 10.3528163,30.3773252 10.3528163,28.5782547 L10.3528163,28.5782547 C10.3528163,25.2242394 12.4450064,22.2263101 15.5931447,21.0693125 Z" id="path-1"></path>
+    </defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="v3">
+            <g id="0-4_room" transform="translate(18.000000, 14.000000)">
+                <polyline id="Path-2" stroke="#BCEBED" stroke-width="2" transform="translate(250.949219, 301.207031) scale(1, -1) translate(-250.949219, -301.207031) " points="0 290.9375 198.996094 360.277344 501.898438 242.136719"></polyline>
+                <path d="M200,0.5 L200,242.5" id="Path-3" stroke="#BCEBED" stroke-width="2"></path>
+                <polygon id="Path" stroke="#80D7DA" stroke-width="4" points="1 64.6445313 200.320312 1 502.441406 112.097656 502.441406 360.867188 312.496094 433.988281 1 313.414062"></polygon>
+            </g>
+            <g id="2-4_camera" transform="translate(55.000000, 117.000000)" fill-opacity="0.179630888" fill="#F5A623">
+                <polygon id="Path-5" points="218.78125 80.3027344 174.591797 0.3046875 0.55859375 24 5.89453125 194.316406 34.2070313 213.144531 136.007813 226.998047 225.933594 210.289063"></polygon>
+            </g>
+            <g id="2-4_features" transform="translate(89.000000, 169.000000)" fill="#E2D52A">
+                <circle id="Oval-2" cx="66" cy="157" r="4"></circle>
+                <circle id="Oval-2" cx="86" cy="119" r="4"></circle>
+                <circle id="Oval-2" cx="104" cy="127" r="4"></circle>
+                <circle id="Oval-2" cx="35" cy="143" r="4"></circle>
+                <circle id="Oval-2" cx="46" cy="139" r="4"></circle>
+                <circle id="Oval-2" cx="152.5" cy="152.5" r="3.5"></circle>
+                <ellipse id="Path" cx="156.5" cy="137" rx="3.5" ry="4"></ellipse>
+                <circle id="Oval-2" cx="50" cy="155" r="4"></circle>
+                <circle id="Oval-2" cx="118" cy="118" r="3"></circle>
+                <circle id="Oval-2-Copy-13" cx="93" cy="45" r="3"></circle>
+                <circle id="Oval-2-Copy-14" cx="42" cy="42" r="3"></circle>
+                <circle id="Oval-2-Copy-15" cx="57" cy="88" r="3"></circle>
+                <circle id="Oval-2-Copy-16" cx="108" cy="68" r="3"></circle>
+                <circle id="Oval-2-Copy-17" cx="121" cy="33" r="3"></circle>
+                <circle id="Oval-2-Copy-18" cx="117.5" cy="2.5" r="2.5"></circle>
+                <circle id="Oval-2-Copy-19" cx="113.5" cy="27.5" r="2.5"></circle>
+                <circle id="Oval-2-Copy-20" cx="118.5" cy="56.5" r="2.5"></circle>
+                <circle id="Oval-2-Copy-21" cx="66.5" cy="61.5" r="2.5"></circle>
+                <circle id="Oval-2" cx="126.5" cy="136.5" r="3.5"></circle>
+                <circle id="Oval-2" cx="107" cy="160" r="4"></circle>
+                <circle id="Oval-2" cx="83" cy="140" r="3"></circle>
+                <circle id="Oval-2-Copy" cx="7" cy="94" r="3"></circle>
+                <circle id="Oval-2-Copy-5" cx="19" cy="68" r="3"></circle>
+                <circle id="Oval-2-Copy-9" cx="7" cy="39" r="3"></circle>
+                <circle id="Oval-2-Copy-10" cx="46" cy="62" r="3"></circle>
+                <circle id="Oval-2-Copy-11" cx="46" cy="16" r="3"></circle>
+                <circle id="Oval-2-Copy-23" cx="22" cy="54" r="3"></circle>
+                <circle id="Oval-2-Copy-12" cx="77" cy="74" r="3"></circle>
+                <circle id="Oval-2-Copy-2" cx="97" cy="106" r="3"></circle>
+                <circle id="Oval-2-Copy-3" cx="71" cy="115" r="3"></circle>
+                <circle id="Oval-2-Copy-4" cx="65" cy="123" r="3"></circle>
+                <circle id="Oval-2-Copy-22" cx="22" cy="25" r="3"></circle>
+                <circle id="Oval-2-Copy-6" cx="130" cy="94" r="3"></circle>
+                <circle id="Oval-2-Copy-7" cx="46" cy="118" r="3"></circle>
+                <circle id="Oval-2-Copy-8" cx="16" cy="134" r="3"></circle>
+                <circle id="Oval-2" cx="142" cy="97" r="3"></circle>
+                <circle id="Oval-2" cx="118" cy="100" r="3"></circle>
+                <circle id="Oval-2" cx="4" cy="144" r="4"></circle>
+            </g>
+            <g id="1-4_phone" transform="translate(257.431048, 288.284945) rotate(-37.000000) translate(-257.431048, -288.284945) translate(246.931048, 264.284945)"></g>
+            <g id="0-4_person" transform="translate(238.000000, 241.000000)">
+                <g id="Rectangle">
+                    <use fill="#353535" fill-rule="evenodd" xlink:href="#path-1"></use>
+                    <path stroke="#979797" stroke-width="1" d="M15.7656241,21.5386214 C12.8142445,22.6233066 10.8528163,25.4338654 10.8528163,28.5782547 L10.8528163,59.3103575 C10.8528163,60.1334921 10.999416,60.950048 11.2857484,61.7217762 C12.6175382,65.3112401 16.6070025,67.1414466 20.1964664,65.8096568 L24.996893,64.0285666 C27.9369564,62.9377223 29.8879726,60.1328641 29.8879726,56.9969569 L29.8879726,26.3046382 C29.8879726,25.4868116 29.7435906,24.6754068 29.4614741,23.9077803 C28.137726,20.3059215 24.1447327,18.4591479 20.5428739,19.7828959 L15.7656241,21.5386214 Z"></path>
+                </g>
+                <path d="M57.8662109,54.2951339 C57.2197037,47.2391468 56.4052506,43.8266412 55.4228516,44.0576172 C49.9941406,45.3339844 42.5444721,9.38688117 44.8359375,6.22265625 C48.6060532,1.01660156 83.0625,-7.31651228 81.84375,16.3310547 C81.03125,32.0960993 77.9322917,44.7507924 72.546875,54.2951339 C80.7701069,49.2018936 86.1395731,46.6552734 88.6552734,46.6552734 C92.428824,46.6552734 95.2041008,52.8013269 94.8476562,55.4792972 C94.6100265,57.2646107 93.5517583,70.7331002 91.6728516,95.8847656 C83.9235026,105.734375 75.6959635,110.609701 66.9902344,110.510742 C53.9316406,110.362305 41.5716684,104.533615 39.8232422,101.063477 C38.6576247,98.7500512 36.6400466,83.5553248 33.7705078,55.4792972 L36.8642578,46.6552734 L57.8662109,54.2951339 Z" id="Path-7" fill="#80D7DA"></path>
+            </g>
+            <g id="4-4_work" transform="translate(136.000000, 165.000000)" stroke="#000000">
+                <polygon id="Path-6" points="0.359375 15.109375 44.578125 0.50390625 44.578125 67.8945313 0.359375 84.4160156"></polygon>
+            </g>
+            <g id="3-4-plane" transform="translate(86.000000, 151.000000)" stroke-width="2" stroke="#E2D52A" fill-opacity="0.27100317" fill="#E2D52A">
+                <polygon id="Path-2" transform="translate(64.065430, 59.840820) scale(1, -1) translate(-64.065430, -59.840820) " points="0.537109375 81.3066406 127.59375 119.625 127.59375 40.6816406 5.53710938 0.056640625"></polygon>
+            </g>
+        </g>
+    </g>
+</svg></div>
+
+
+<p></article></p>
+
+<p>This seems almost perfect, except that it only works in theory. In practice, you don't get enough feature points on a
+blank wall. Recommending user point their phone at a blank wall (the kind of wall you'd place an artwork on) is likely
+to end up in frustration. So instead, our user flow is:</p>
+
+<p><article class="desktop-only" style='display: flex; flex-flow:row; margin: 0px -60px;'></p>
+
+<div style='flex:1;'>
+  <ol class="workflow" data-id="v4">
+    <li>Open up ARKit and let it discover the world</li>
+    <li>Ask a user to point at an existing object on a wall</li>
+    <li>Expand the discovered plane in all directions</li>
+    <li>Use the extended plane to place an artwork</li>
+  </ul>
+</div>
+
+
+<div style='flex:1'><?xml version="1.0" encoding="UTF-8"?>
+<svg width="530px" height="460px" viewBox="0 0 530 460" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 47.1 (45422) - http://www.bohemiancoding.com/sketch -->
+    <title>v4</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <path d="M15.5931447,21.0693125 L20.3703944,19.313587 L20.3703944,19.313587 C24.2314454,17.8945812 28.5117771,19.8742499 29.9307829,23.7353008 C30.2332008,24.5581662 30.3879726,25.4279603 30.3879726,26.3046382 L30.3879726,56.9969569 L30.3879726,56.9969569 C30.3879726,60.3419246 28.3068886,63.3337733 25.1708211,64.4973405 L20.3703944,66.2784308 L20.3703944,66.2784308 C16.5220338,67.7062784 12.244822,65.7440649 10.8169744,61.8957043 C10.5099898,61.0683138 10.3528163,60.1928622 10.3528163,59.3103575 C10.3528163,50.8653937 10.3528163,42.42043 10.3528163,33.9754662 C10.3528163,32.1763957 10.3528163,30.3773252 10.3528163,28.5782547 L10.3528163,28.5782547 C10.3528163,25.2242394 12.4450064,22.2263101 15.5931447,21.0693125 Z" id="path-1"></path>
+    </defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="v4">
+            <g id="0-4_room" transform="translate(18.000000, 14.000000)">
+                <polyline id="Path-2" stroke="#BCEBED" stroke-width="2" transform="translate(250.949219, 301.207031) scale(1, -1) translate(-250.949219, -301.207031) " points="0 290.9375 198.996094 360.277344 501.898438 242.136719"></polyline>
+                <path d="M200,0.5 L200,242.5" id="Path-3" stroke="#BCEBED" stroke-width="2"></path>
+                <polygon id="Path" stroke="#80D7DA" stroke-width="4" points="1 64.6445313 200.320312 1 502.441406 112.097656 502.441406 360.867188 312.496094 433.988281 1 313.414062"></polygon>
+                <polygon id="Path-9" stroke="#BCEBED" points="140 143.699219 140 220.496094 176.507812 208.332031 176.507812 132"></polygon>
+            </g>
+            <g id="1-4_camera" transform="translate(55.000000, 117.000000)" fill-opacity="0.179630888" fill="#F5A623">
+                <polygon id="Path-5" points="218.78125 80.3027344 174.591797 0.3046875 0.55859375 24 5.89453125 194.316406 34.2070313 213.144531 136.007813 226.998047 225.933594 210.289063"></polygon>
+            </g>
+            <g id="1-4_features" transform="translate(89.000000, 156.000000)" fill="#E2D52A">
+                <circle id="Oval-2" cx="66" cy="170" r="4"></circle>
+                <circle id="Oval-2" cx="86" cy="132" r="4"></circle>
+                <circle id="Oval-2" cx="104" cy="140" r="4"></circle>
+                <circle id="Oval-2" cx="35" cy="156" r="4"></circle>
+                <circle id="Oval-2" cx="46" cy="152" r="4"></circle>
+                <circle id="Oval-2" cx="152.5" cy="165.5" r="3.5"></circle>
+                <ellipse id="Path" cx="156.5" cy="150" rx="3.5" ry="4"></ellipse>
+                <circle id="Oval-2" cx="50" cy="168" r="4"></circle>
+                <circle id="Oval-2" cx="118" cy="131" r="3"></circle>
+                <circle id="Oval-2-Copy-13" cx="93" cy="58" r="3"></circle>
+                <circle id="Oval-2-Copy-14" cx="100" cy="66" r="3"></circle>
+                <circle id="Oval-2-Copy-15" cx="57" cy="101" r="3"></circle>
+                <circle id="Oval-2-Copy-16" cx="108" cy="81" r="3"></circle>
+                <circle id="Oval-2-Copy-17" cx="81" cy="34" r="3"></circle>
+                <circle id="Oval-2-Copy-18" cx="77.5" cy="3.5" r="2.5"></circle>
+                <circle id="Oval-2-Copy-19" cx="73.5" cy="28.5" r="2.5"></circle>
+                <circle id="Oval-2-Copy-20" cx="118.5" cy="69.5" r="2.5"></circle>
+                <circle id="Oval-2-Copy-21" cx="66.5" cy="74.5" r="2.5"></circle>
+                <circle id="Oval-2" cx="126.5" cy="149.5" r="3.5"></circle>
+                <circle id="Oval-2" cx="107" cy="173" r="4"></circle>
+                <circle id="Oval-2" cx="83" cy="153" r="3"></circle>
+                <circle id="Oval-2-Copy" cx="65" cy="81" r="3"></circle>
+                <circle id="Oval-2-Copy-5" cx="101" cy="40" r="3"></circle>
+                <circle id="Oval-2-Copy-9" cx="89" cy="11" r="3"></circle>
+                <circle id="Oval-2-Copy-10" cx="46" cy="75" r="3"></circle>
+                <circle id="Oval-2-Copy-11" cx="104" cy="3" r="3"></circle>
+                <circle id="Oval-2-Copy-23" cx="104" cy="26" r="3"></circle>
+                <circle id="Oval-2-Copy-12" cx="77" cy="87" r="3"></circle>
+                <circle id="Oval-2-Copy-2" cx="97" cy="119" r="3"></circle>
+                <circle id="Oval-2-Copy-3" cx="71" cy="128" r="3"></circle>
+                <circle id="Oval-2-Copy-4" cx="65" cy="136" r="3"></circle>
+                <circle id="Oval-2-Copy-22" cx="80" cy="49" r="3"></circle>
+                <circle id="Oval-2-Copy-6" cx="130" cy="107" r="3"></circle>
+                <circle id="Oval-2-Copy-7" cx="46" cy="131" r="3"></circle>
+                <circle id="Oval-2-Copy-8" cx="16" cy="147" r="3"></circle>
+                <circle id="Oval-2" cx="142" cy="110" r="3"></circle>
+                <circle id="Oval-2" cx="118" cy="113" r="3"></circle>
+                <circle id="Oval-2" cx="4" cy="157" r="4"></circle>
+            </g>
+            <g id="1-4_phone" transform="translate(257.431048, 288.284945) rotate(-37.000000) translate(-257.431048, -288.284945) translate(246.931048, 264.284945)"></g>
+            <g id="0-4_person" transform="translate(238.000000, 241.000000)">
+                <g id="Rectangle">
+                    <use fill="#353535" fill-rule="evenodd" xlink:href="#path-1"></use>
+                    <path stroke="#979797" stroke-width="1" d="M15.7656241,21.5386214 C12.8142445,22.6233066 10.8528163,25.4338654 10.8528163,28.5782547 L10.8528163,59.3103575 C10.8528163,60.1334921 10.999416,60.950048 11.2857484,61.7217762 C12.6175382,65.3112401 16.6070025,67.1414466 20.1964664,65.8096568 L24.996893,64.0285666 C27.9369564,62.9377223 29.8879726,60.1328641 29.8879726,56.9969569 L29.8879726,26.3046382 C29.8879726,25.4868116 29.7435906,24.6754068 29.4614741,23.9077803 C28.137726,20.3059215 24.1447327,18.4591479 20.5428739,19.7828959 L15.7656241,21.5386214 Z"></path>
+                </g>
+                <path d="M57.8662109,54.2951339 C57.2197037,47.2391468 56.4052506,43.8266412 55.4228516,44.0576172 C49.9941406,45.3339844 42.5444721,9.38688117 44.8359375,6.22265625 C48.6060532,1.01660156 83.0625,-7.31651228 81.84375,16.3310547 C81.03125,32.0960993 77.9322917,44.7507924 72.546875,54.2951339 C80.7701069,49.2018936 86.1395731,46.6552734 88.6552734,46.6552734 C92.428824,46.6552734 95.2041008,52.8013269 94.8476562,55.4792972 C94.6100265,57.2646107 93.5517583,70.7331002 91.6728516,95.8847656 C83.9235026,105.734375 75.6959635,110.609701 66.9902344,110.510742 C53.9316406,110.362305 41.5716684,104.533615 39.8232422,101.063477 C38.6576247,98.7500512 36.6400466,83.5553248 33.7705078,55.4792972 L36.8642578,46.6552734 L57.8662109,54.2951339 Z" id="Path-7" fill="#80D7DA"></path>
+            </g>
+            <g id="4-4_work" transform="translate(94.000000, 166.000000)" stroke="#000000">
+                <polygon id="Path-6" points="0.359375 15.109375 44.578125 0.50390625 44.578125 67.8945313 0.359375 84.4160156"></polygon>
+            </g>
+            <g id="2-4-plane" transform="translate(154.000000, 144.000000)" stroke-width="2" stroke="#E2D52A" fill-opacity="0.27100317" fill="#E2D52A">
+                <polygon id="Path-2" transform="translate(22.351563, 46.503906) scale(1, -1) translate(-22.351563, -46.503906) " points="0.724609375 81.4941406 43.9785156 92.9433594 43.9785156 14.2070312 0.724609375 0.064453125"></polygon>
+            </g>
+            <g id="3-4-extended-plane" transform="translate(10.000000, 106.000000)" stroke="#7ED321" stroke-dasharray="2">
+                <polygon id="Path-10" points="0.57421875 76.140625 288.720703 0.248046875 288.720703 94.5058594 0.57421875 187.464844"></polygon>
+            </g>
+        </g>
+    </g>
+</svg></div>
+
+
+<p></article></p>
+
+<p>🎉 - you have the Artsy workflow for putting a work on the wall.</p>
+
+<a name="Abstractions"></a>
+<h2>Abstractions</h2>
+
+<p>While we were not initially sure about how well ARKit would work out for us, we thought the best way to get our feet wet
+would be to work with a contractor. We knew <a href="http://www.lazerwalker.com">@lazerwalker</a> through the iOS dev community and asked if he
+was interested in prototyping it out. He built out a demo application of the first design iteration, you can <a href="https://github.com/lazerwalker/art-on-walls-prototype">see it
+here</a> as it's MIT licensed.</p>
+
+<p>I took his prototype and <a href="https://github.com/artsy/eigen/pull/2501">merged it into our app</a> Eigen. From there, I started to turn the prototype into
+production code. We effectively had two state machines: one that was handling the internal state of the AR world, and
+another which handled the user interface from the UIKit world. We kept these in sync by having two protocols:
+<code>ARVIRInteractive</code> and <code>ARVIRDelegate</code>.</p>
+
+<p>They didn't end up being that complex, you can see them in <a href="https://github.com/artsy/eigen/blob/f897b3438bd07470bd88a790fc6d6a524f5756cb/Artsy/View_Controllers/ARVIR/AR/ARAugmentedVIRInteractionController.h"><code>ARAugmentedVIRInteractionController.h</code></a>. In fact,
+the story of AR at Artsy is that most of this is not too complex. Which I think is a testament to how well thought-out
+ARKit is.</p>
+
+<p>So to make it work, we have a reasonably complicated UIViewController subclass,
+<a href="https://github.com/artsy/eigen/blob/f897b3438bd07470bd88a790fc6d6a524f5756cb/Artsy/View_Controllers/Core/ARViewInRoomViewController.m"><code>ARAugmentedVIRViewController.m</code></a> which handles presenting a user interface above the camera, then an
+interaction controller <a href="https://github.com/artsy/eigen/blob/f897b3438bd07470bd88a790fc6d6a524f5756cb/Artsy/View_Controllers/ARVIR/AR/ARAugmentedVIRInteractionController.m"><code>ARAugmentedVIRInteractionController.m</code></a> which handles all of the interactions inside
+AR. By using protocols to communicate between two, I could test out different AR interactions by duplicating the
+existing interaction controller and iterating on a new object for a while. This made it possible to prototype a few
+ideas, then switch between them - saving on dev time as this project wasn't a good fit for <a href="http://artsy.github.io/series/react-native-at-artsy/">React Native</a>.</p>
+
+<p>React Native is really great for <a href="http://artsy.github.io/blog/2018/03/17/two-years-of-react-native/">nearly every screen we deal with</a> typically. We tend to basically build pretty
+screens of JSON. This experience is far from that. It requires constantly changing states between two very separate but
+linked worlds. One of the biggest advantages to doing it in React Native would have been using it for cross-platform
+work, but that's speculative as only ARKit supports vertical plane detection today. We'd have had to either use <a href="https://github.com/react-native-ar/react-native-arkit">a
+dependency</a>, or build our own simpler bridge from ARKit to JS and maintain that. It just felt like a lot of work
+for a one-off section of the app.</p>
+
+<p>Testing this code turned out to not be too valuable, I have tests that <a href="https://github.com/artsy/eigen/tree/master/Artsy_Tests/View_Controller_Tests/ARVIR">cover a lot of the UIKit level</a> work but
+I avoided writing tests for ARKit code. It was changing too often, and was often exploratory. Also, our tests run on iOS
+10, which doesn't support ARKit anyway. So those tests would not run on CI.</p>
+
+<a name="Demo"></a>
+<h2>Demo</h2>
+
+<p>Wonder what it looks like in production? Click through for a video of it in action in my "cosy" manhattan bedroom:</p>
+
+<center>
+<a href="http://files.artsy.net/videos/eigen-arvir-demo.mp4">
+<img src="/images/ar/ar-vir-demo.png" width=325>
+</a>
+</center>
+
+
+<p>We explicitly aimed to try and have this project as free as possible from dependencies so that others could re-use this
+code. It's not <em>quite</em> generic enough to warrant making it's own CocoaPod, but it's MIT licensed and most of the
+dependencies are to do with user-interface styling and testing, which should be easily replaced in another codebase. Let
+us know if you've explored adding something it to your app or have questions!</p>
+
+<p> <style type="text/css">
+.workflow li {
+  width: 230px;
+  padding: 20px;
+  list-style:none;
+  color: #80D7DA;
+  border: 1px solid #80D7DA;
+  margin-top:-1px;
+}
+.workflow li.active {
+  border-left: 1px solid black;
+  border-right: 1px solid black;
+  color: black;
+}
+.diagram {
+  display: flex;
+  flex-flow:row;
+  margin: 0px -60px;
+}
+ol {
+  padding-left: 0;
+  margin-top: -20px;
+}
+@media screen and (min-width: 900px) {
+  body > div {
+    background-image: url(/images/ar/cover.svg);
+    background-repeat: no-repeat;
+    background-position: 0px 00px;
+  }
+}
+</style></p>
+
+<script>
+  $(() => {
+    // When hovering on an .workflow li, use it's index
+    // to disable groups in a correlating SVG. Groups in the SVG
+    // all are prefixed with `start-end_name`.
+    $(".workflow li").hover(function() {
+        var thisIndex = $(this).index()  + 1
+        var parentDataID = $(this).parent().data("id")
+        $(this).parent().children().removeClass('active')
+        $(this).addClass('active')
+
+        $('g#' + parentDataID +' g').toArray().forEach(g => {
+          if (!g.id.includes("-")) { return }
+
+          var before = parseInt(g.id.split("-")[0])
+          var after = parseInt(g.id.split("-")[1].split("_")[0])
+          var shouldShow = before <= thisIndex && thisIndex <= after
+
+          g.style.display = shouldShow ? "block" : "none"
+        })
+    });
+    
+    // Select the first item in every SVG li
+    $(".workflow li:first-child").mouseenter()
+})</script>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Deploying your app on a weekly basis via fastlane + Travis CI]]></title>
+    <link href="http://artsy.github.io/blog/2017/07/31/fastlane-travis-weekly-deploys/"/>
+    <updated>2017-07-31T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2017/07/31/fastlane-travis-weekly-deploys</id>
+    <content type="html"><![CDATA[<p>We have a few apps now, but one of them isn't really used by anyone other than developers. This is <a href="https://github.com/artsy/emission/tree/master/Example">our React Native host app</a>. We built our React Native components <a href="/blog/2016/08/24/On-Emission/">as a library</a> to be consumed by our other apps. Our development environment for these components is a unique app that acts as a host for the React Native components. It's effectively a long tableview.</p>
+
+<p>This app is often updated for developers, but never deployed to beta users inside Artsy. So I automated it. Using Travis CI and fastlane. This post covers how I got that set up.</p>
+
+<!-- more -->
+
+
+
+
+<center>
+  <img src="/images/fastlane-weekly/screenshot.png" width=300>
+</center>
+
+
+<p>As the JavaScript is continuously deployed, the native side of the app rarely gets a deploy. In order to ensure an up-to-date version of the app, I used the <a href="https://docs.travis-ci.com/user/cron-jobs/">scheduler</a> now available in Travis CI, and Circle CI. This is a perfect use-case for one-off tasks like uploading an app to Apple's Testflight on a weekly basis.</p>
+
+<p>I wanted this to exist outside of our current CI environment for two reasons:</p>
+
+<ul>
+<li>Our CI is already <a href="https://github.com/artsy/emission/pull/263">using AppHub</a> to deploy the JavaScript parts of our React Native on a per-commit basis. It's complicated enough as it is, without adding a lot more process.</li>
+<li>Our CI is currently running on Linux boxes, and so everything is fast and stable. Deploying using the main repo would force us to use macOS which would slow down our processes.</li>
+</ul>
+
+
+<p>The downside of this choice is that the process of uploading is not inside the main repo, and can go out of sync with the main app.</p>
+
+<a name="Setup"></a>
+<h2>Setup</h2>
+
+<p>I created a new repo, and added the <a href="https://github.com/artsy/emission-nebula/commit/4d18a11629e097c71b9a375465c754abf45f62d6">usual LICENSE and README</a>, then started <a href="https://github.com/artsy/emission-nebula/pull/1">working on a PR</a> that added the initial support for CI to run. Here are the general steps I needed to make work:</p>
+
+<ul>
+<li>Downloading and setting up the application.</li>
+<li>Ensuring signing will work.</li>
+<li>Creating the build and shipping it to Testflight.</li>
+<li>Notifications that it passed or succeeded.</li>
+</ul>
+
+
+<p>Finally I needed to document the process, which is what you're reading.</p>
+
+<a name="Downloading.and.setting.up.the.application"></a>
+<h2>Downloading and setting up the application</h2>
+
+<p>My initial thoughts were to use a submodule, but that option provides little advantage over cloning the repo itself so it's done inline. Our dependencies for the app live in Rubygems (fastlane/CocoaPods), NPM (React Native) and CocoaPods (Artsy Mobile code), so I use the <code>before_install</code> and <code>before_script</code> section of the <code>.travis.yml</code> to set up our dependencies:</p>
+
+<pre><code class="yml"># Use a Mac build please
+language: objective-c
+osx_image: xcode8.2
+
+# Ensure that fastlane is at the latest version
+before_install:
+- bundle update
+
+# Let fastlane set up the other dependency managers
+before_script:
+- bundle exec fastlane setup
+
+# Separate fastlane lanes so that they can be individually
+# tested one by one during development
+script:
+- bundle exec fastlane validate_env_vars
+- bundle exec fastlane ci_deploy
+</code></pre>
+
+<p>Note the <code>- bundle update</code>. As fastlane works against unofficial iTunes connect which is always changing, it's safer to always use the most recent release.</p>
+
+<a name="Ensuring.signing.will.work."></a>
+<h2>Ensuring signing will work.</h2>
+
+<p>This one is a bit tricker, luckily I've already set up one of our apps to use <a href="/blog/2017/04/05/what-is-fastlane-match/">fastlane match</a> and I can re-use that infrastructure. As it is a private repo, Travis did not have access to clone the repo. I fixed this by creating an access token for a user with read-only access to our match-codesigning repo, then exposed this as a private environment variable in CI which the Matchfile uses. E.g.</p>
+
+<pre><code class="ruby">git_url "https://#{ENV['GITHUB_SUBMODULES_USER']}@github.com/artsy/mobile_fastlane_match"
+
+# Instead of 
+# git_url "https://github.com/artsy/mobile_fastlane_match"
+</code></pre>
+
+<p>This is one of the highlights on fastlane's choice in building a DSL that which sits above a real programming language, you give users a lot of flexibility.</p>
+
+<p>Next up, I added a fastlane lane for code signing, and keychain setup. This just calls two setup functions.</p>
+
+<pre><code class="ruby">lane :setup_signing do
+  setup_travis
+
+  match(type: 'appstore')
+end
+</code></pre>
+
+<a name="Creating.the.build.and.shipping.it.to.Testflight"></a>
+<h2>Creating the build and shipping it to Testflight</h2>
+
+<p>This is handled by <a href="https://github.com/fastlane/fastlane/tree/master/gym">fastlane gym</a> at the start of the main lane.</p>
+
+<pre><code class="ruby"># The main job for fastlane in this repo, you can run this on your computer
+# You can run it via `bundle exec fastlane ship`
+lane :ship do
+  # We were having issues with building an a few folders deep.
+  # The /Pods bit is because we can rely on it being there, see
+  # this link: https://docs.fastlane.tools/advanced/#directory-behavior
+  #
+  Dir.chdir('../emission/Example/Pods') do
+    gym workspace: 'Emission.xcworkspace',
+        configuration: 'Deploy',
+        scheme: 'Emission'
+  end
+
+  # [...]
+end
+</code></pre>
+
+<p>It uses a scheme for deploys, which prioritises using AppHub over a local React Native server. Gym handles a lot of CLI ugliness for us, and works well.</p>
+
+<p>Sending the app to Testflight involves a a few lines:</p>
+
+<pre><code class="ruby"># Get the last 10 lines of the CHANGELOG for Testflight
+changelog = '../emission/CHANGELOG.md'
+upcoming_release_notes = File.read(changelog).split("\n### ").first
+
+# Ship to testflight
+pilot(changelog: upcoming_release_notes)
+</code></pre>
+
+<p>This lets the deploy process figure out what the latest release version is, and how many builds have shipped for that version. Then those can be used to set the build version and create a tag associated with it.</p>
+
+<p><a href="https://github.com/fastlane/fastlane/tree/master/pilot">fastlane pilot</a> is used to send off the compiled build to Testflight.</p>
+
+<a name="Keeping.track.of.deploys"></a>
+<h2>Keeping track of deploys</h2>
+
+<p>I don't know when we'll need it today, but it's always good to be able to go back and see what code lines up to every release. To do this I have a few lines of Ruby that creates a tag inside the original Emission repo.</p>
+
+<pre><code class="ruby"># Do a tag, we use a http git remote so we can have push access
+# as the default remote for travis is read-only. This needs to be
+# inside the emission repo, instead of our own.
+Dir.chdir('../emission/Example/') do
+  tag = "deploy-#{latest_version}-#{build_version}"
+  add_git_tag(key: tag)
+
+  if ENV['GITHUB_SUBMODULES_USER']
+    writable_remote = "https://#{ENV['GITHUB_SUBMODULES_USER']}@github.com/artsy/emission.git"
+    sh "git remote add http #{writable_remote}"
+  else
+    sh 'git remote add http https://github.com/artsy/emission.git'
+  end
+  push_git_tags(remote: 'http')
+end
+</code></pre>
+
+<a name="Notifications.that.it.passed.or.succeeded."></a>
+<h2>Notifications that it passed or succeeded.</h2>
+
+<p>This was easy, I created a new slack inbound web-hook and added that as an environment variable. Then when a build passes we post a notification that there is a new version for everyone in Slack, if the lane fails then it will also post to slack. To ensure we keep on top of it, during development this was commented out.</p>
+
+<pre><code class="ruby"># If the weekly task fails, then ship a message
+error do |_, exception|
+   slack message: "Error Deploying Emission: #{exception}",
+         success: false,
+         payload: { Output: exception.error_info.to_s }
+end
+</code></pre>
+
+<p>That wraps up setting up the CI. Once you've confirmed everything has worked, you can add the scheduler inside Travis and expect to see a slack notification in a week.</p>
+
+<p>By the end of the process, our <code>Fastfile</code> looked like:</p>
+
+<pre><code class="ruby"># This is documented in the Artsy Blog: 
+# http://artsy.github.io/blog/2017/07/31/fastlane-travis-weekly-deploys/
+lane :setup do
+  Dir.chdir('..') do
+    sh 'rm -rf emission' if Dir.exist? 'Emission'
+    sh 'git clone https://github.com/artsy/emission.git'
+    Dir.chdir('emission') do
+      sh '. ~/.nvm/nvm.sh &amp;&amp; nvm use &amp;&amp; npm install yarn --global &amp;&amp; yarn install'
+    end
+
+    Dir.chdir('emission/Example') do
+      sh 'pod repo update'
+      sh 'pod install'
+    end
+    stamp_plist
+  end
+end
+
+# Lets the CI run a bunch of jobs, and share ENV vars between them
+lane :ci_deploy do
+  setup_signing
+  stamp_plist
+  ship
+end
+
+# The main job for fastlane in this repo, you can run this on your computer
+# You can run it via `bundle exec fastlane ship`
+lane :ship do
+  # We were having issues with building an a few folders deep.
+  # The /Pods bit is because we can rely on it being there, see
+  # this link: https://docs.fastlane.tools/advanced/#directory-behavior
+  #
+  Dir.chdir('../emission/Example/Pods') do
+    gym(workspace: 'Emission.xcworkspace',
+        configuration: 'Deploy',
+        scheme: 'Emission')
+  end
+
+  # Get the last 10 lines of the CHANGELOG for Testflight
+  changelog = '../emission/CHANGELOG.md'
+  upcoming_release_notes = File.read(changelog).split("\n### ").first
+
+  # Ship to testflight
+  pilot(changelog: upcoming_release_notes)
+
+  # Log into iTunes connect, get the latest version of the app we shipped, and how many builds we've sent
+  Spaceship::Tunes.login(ENV['FASTLANE_USERNAME'], ENV['FASTLANE_PASSWORD'])
+  app = Spaceship::Tunes::Application.find('net.artsy.Emission')
+  latest_version = app.build_trains.keys.sort.last
+  train = app.build_trains[latest_version]
+  build_version = train.builds.count + 1
+
+  # Do a tag, we use a http git remote so we can have push access
+  # as the default remote for travis is read-only. This needs to be
+  # inside the emission repo, instead of our own.
+  Dir.chdir('../emission/Example/') do
+    tag = "deploy-#{latest_version}-#{build_version}"
+    add_git_tag(key: tag)
+
+    if ENV['GITHUB_SUBMODULES_USER']
+      writable_remote = "https://#{ENV['GITHUB_SUBMODULES_USER']}@github.com/artsy/emission.git"
+      sh "git remote add http #{writable_remote}"
+    else
+      sh 'git remote add http https://github.com/artsy/emission.git'
+    end
+
+    push_git_tags(remote: 'http')
+  end
+
+  slack message: 'There is a new Emission beta available on Testflight.',
+        payload: {
+          'Version' =&gt; latest_version,
+          "What's new" =&gt; upcoming_release_notes
+        },
+        default_payloads: []
+end
+
+# In case you need to update the signing profiles for this app
+lane :update_signing do
+  match(type: 'appstore')
+end
+
+# Used by CI, will not sneakily update (the CI only has read-only access to the repo anyway)
+lane :setup_signing do
+  setup_travis
+  match(type: 'appstore')
+end
+
+# Minor plist modifications
+lane :stamp_plist do
+  plist = 'emission/Example/Emission/Info.plist'
+
+  # Increment build number to current date
+  build_number = Time.new.strftime('%Y.%m.%d.%H')
+  `/usr/libexec/PlistBuddy -c "Set CFBundleVersion #{build_number}" "#{plist}"`
+end
+
+# Mainly so we don't forget to include these vars in the future
+lane :validate_env_vars do
+  unless ENV['FASTLANE_USERNAME'] &amp;&amp; ENV['FASTLANE_PASSWORD'] &amp;&amp; ENV['MATCH_PASSWORD']
+    raise 'You need to set FASTLANE_USERNAME, FASTLANE_PASSWORD and MATCH_PASSWORD in your environment'
+  end
+
+  unless ENV['SLACK_URL']
+    raise "You need to set SLACK_URL (#{ENV['SLACK_URL']}) in your environment."
+  end
+end
+
+# If the weekly task fails, then ship a message, a success would also send
+error do |_, exception|
+  slack(message: "Error Deploying Emission: #{exception}",
+        success: false,
+        payload: { Output: exception.error_info.to_s })
+end
+</code></pre>
+
+<p>Automatically deploying is a good pattern for encouraging more deploys of an app which has only been deployed once. It's a pattern we could also move to in some of our other apps too, if it feels good. If you're interested in if something has changed since this post was authored, the repo is here: https://github.com/artsy/emission-nebula so you can read out the Fastfile and we'll answer questions you have inside GitHub issues on it.</p>
+
+<p>The most annoying part about building deployment changes are that an iteration takes ~20 minutes, so make sure you also have another (easily interrupted) task to do at the same time.</p>
+
+<p>The second most annoying is that it took months to eventually get this right - so I owe Felix Krause a big thanks for sitting down and pairing with me, we figuring out that <code>xcodebuild</code> can create empty archive issues when you run projects that have the xcproject/xcworkspace a few levels deep.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[iOS Retrospectives]]></title>
+    <link href="http://artsy.github.io/blog/2017/05/27/ios-retrospectives/"/>
+    <updated>2017-05-27T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2017/05/27/ios-retrospectives</id>
+    <content type="html"><![CDATA[<p>In the 1990s, Harvard researcher Amy Edmonson made the unexpected discovery that in hospitals, <a href="https://www.researchgate.net/publication/250959492_Learning_from_Mistakes_Is_Easier_Said_Than_Done_Group_and_Organizational_Influences_on_the_Detection_and_Correction_of_Human_Error">higher performing teams reported making more mistakes</a>. This is unexpected because one would assume that <em>better</em> performers would make <em>fewer</em> mistakes. In fact, the number of mistakes isn't what distinguishes higher-performing teams, but rather it's their attitude towards discussing – and learning from – their failures.</p>
+
+<p>I've spent the past eight months reading more about <a href="https://en.wikipedia.org/wiki/Psychological_safety">psychological safety</a>: the shared belief that team members won't be punished for speaking up with mistakes or questions or ideas. As a result, I've been trying to operationalize psychological safety on my own team, and part of that includes discussing and learning from our mistakes. At Artsy, we candidly discuss site outages or production bugs on the web, but haven't historically been great at communicating about iOS problems.</p>
+
+<p>I want to start doing more retrospectives after things go wrong. So this week, I held my first iOS retrospective.</p>
+
+<!-- more -->
+
+
+<p>It consisted of three parts:</p>
+
+<ol>
+<li>Preparation.</li>
+<li>A meeting.</li>
+<li>Follow-up.</li>
+</ol>
+
+
+<p>Let's discuss each one. And remember: the most important part of a bug retrospective is to <em>learn</em>. Encourage others to ask questions, or propose ideas.</p>
+
+<a name="Prep.Work"></a>
+<h3>Prep Work</h3>
+
+<p>Prep work involved adapting Artsy's <a href="https://artsy.github.io/blog/2014/11/19/how-to-write-great-outage-post-mortems/">site outage post-mortem</a> for this less serious bug. I drafted a short document with the following information:</p>
+
+<ul>
+<li><strong>Summary</strong>: A short paragraph about what happened, and a timeline of when the bug was reported, when it was first introduced, when it was fixed, and when the fix was submitted to the App Store. Include screenshots if available.</li>
+<li><strong>Cause</strong>: Technical details about the cause of the problem. Include code snippets if appropriate.</li>
+<li><strong>Resolution</strong>: Technical details about the fix for the problem, including links to pull requests. The fix was one-line, so I included a git diff as well.</li>
+<li><strong>Post-Mortem</strong>: A discussion of what contributed to the bug, and how can the team can avoid those problems in the future.</li>
+</ul>
+
+
+<p>Remember, each section is frame around learning from what went wrong with the goal of preventing similar issues from happening in the future.</p>
+
+<p>The preparation took me about a half hour, but would have been faster if I had taken more notes earlier. The bug in question had taken place three weeks ago – I wish I had held the retrospective earlier.</p>
+
+<a name="Meeting"></a>
+<h3>Meeting</h3>
+
+<p>I invited our Auctions dev team to the meeting and our product manager, but I made it clear that everyone's attendence was optional. During the meeting, I went through the retrospective document I had prepared, answered some questions, and took some notes for further follow-up.</p>
+
+<a name="Follow-up"></a>
+<h3>Follow-up</h3>
+
+<p>After the meeting, I addressed the follow-up items. In our case, this involved fixing a problem where our staging servers use data that's not reprepsentive of the data used in production. Additionally, we've made changes to how we test certain scenarious in our iOS app.</p>
+
+<p>Finally, I shared the document with the wider team. In this case, it was the Auctions Operations team. As a developer, I want to empower my teammates to understand why software sometimes behaves unexpectedly.</p>
+
+<hr />
+
+<p>So when should you do a retrospective? The answer is "probably more often than you do now." I know our team could benefit from more of them, and I think the Artsy Engineering team could too. I'm not concerned about doing them too often – I would rather that than not doing them enough.</p>
+
+<p>Remember that the benefits of a retrospective aren't limited to learning from a single mistake; retrospectives encourage a <em>culture</em> of learning from mistakes, which (as Edmonson discovered in hospital settings) is far more valuable.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[What is fastlane match?]]></title>
+    <link href="http://artsy.github.io/blog/2017/04/05/what-is-fastlane-match/"/>
+    <updated>2017-04-05T12:17:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2017/04/05/what-is-fastlane-match</id>
+    <content type="html"><![CDATA[<p>Like anyone working on a non-trivial app in the iOS world who values their time, we use fastlane. <a href="https://fastlane.tools">fastlane</a> is a suite
+of tools that makes it much simpler to automate the very manual processes provided by Apple for deployment.</p>
+
+<p>We've adopted it in a relatively piece-meal manner in different projects, converting custom in-house code to something
+provided by the gem.  Over time we found what pieces of the suite work for us. <a href="https://github.com/artsy/energy/pull/266">I've adopted another today</a>: <a href="https://github.com/fastlane/fastlane/tree/master/match">match</a>.</p>
+
+<p>match automates setting up your iOS projects for code signing. One of the most arduous orthogonal tasks which every dev team learns and then forgets.</p>
+
+<p>In using match, we have given away a bit of control with code signing, and so this post is going to dig into; what we used
+to have, and how it works now with match instead.</p>
+
+<!-- more -->
+
+
+<p>When match came out, I knew this was a 🌟 idea.</p>
+
+<ul>
+<li>Automatically generate the right certificates and keys for your different apps and environments.</li>
+<li>Take all your developer certificates and keys, move them to a central place accessible via private git repos.</li>
+<li>Encrypt all your certs and keys, the team just needs to share one password.</li>
+<li>Migrate all of those keys on both the developer's and CI's computers.</li>
+</ul>
+
+
+<p>You can now have a consistent signing setup between how you work, and how your CI runs. After understanding this, I migrated
+Artsy's app store apps to deploy via <a href="https://circleci.com">Circle CI</a>. We initially gave match a shot, but ended up having issues with supporting
+multiple apps. So, I replicated the core ideas in match into our Fastfile. It looked like this:</p>
+
+<pre><code class="ruby">lane :setup_for_app_store do
+  app_name = "eigen"
+  signing_root = "signing"
+
+  `git clone https://github.com/artsy/mobile_code_signing.git #{signing_root}`
+
+  # prints out the codesigning identities
+  system "security find-identity -v -p codesigning"
+
+  # Install the iOS distribution certificate, -A
+  system "security import #{signing_root}/ios_distribution.cer  -k ~/Library/Keychains/login.keychain -A"
+
+  # Move our provisioning profile in
+  profile_path = File.expand_path("~") + "/Library/MobileDevice/Provisioning Profiles/"
+  destination = profile_path + "/" + app_name + ".mobileprovision"
+  profile = Dir.glob(signing_root + "/profiles/" + app_name + "/*").first
+
+  # Ensure folder exists
+  unless File.directory?(profile_path)
+    FileUtils.mkdir_p(profile_path)
+  end
+
+  # Migrate it in
+  FileUtils.copy profile, destination
+  puts "Installed Profile"
+
+  # Install the key
+  key = Dir.glob(signing_root + "/keys/" + app_name + "/*").first
+  system "security import #{key} -k ~/Library/Keychains/login.keychain -P #{ENV['MATCH_PASSWORD']}  -A "
+
+  # prints out the codesigning identities
+  system "security find-identity -v -p codesigning"
+
+  # Clean-up
+  `rm -rf #{signing_root}`
+end
+</code></pre>
+
+<p>Pretty neat, huh? It handles the centralization and migration of certificates. The trade-off against match is:</p>
+
+<ul>
+<li>We continue to maintain our own certificates, keys and provisioning profiles.</li>
+<li>There is no easy way to update these.</li>
+<li>There is tooling which makes it easy to see the state of all the code signing process.</li>
+</ul>
+
+
+<p>A year later, on a project which gets no-where near as much developer attention, I discovered that we had got multiple
+parts of the certs, keys and profiles wrong when updating our central repo. So, for <a href="http://folio.artsy.net">this project</a>, I have switched to use match.</p>
+
+<hr />
+
+<a name="So.how.does.it.work.now."></a>
+<h1>So how does it work now?</h1>
+
+<p>First, I ran <code>bundle exec fastlane appstore</code> and <code>bundle exec fastlane dev</code>.</p>
+
+<p>This creates the certificates, keys and profiles on iTunes connect and gives you output similar to this:</p>
+
+<pre><code class="sh">
++-----------------------+------------------------------------------------+
+|                        Summary for match 2.25.0                        |
++-----------------------+------------------------------------------------+
+| readonly              | true                                           |
+| git_url               | https://github.com/artsy/mobile_fastlane_match |
+| type                  | appstore                                       |
+| git_branch            | master                                         |
+| app_identifier        | sy.art.folio                                   |
+| username              | it@artsymail.com                               |
+| keychain_name         | login.keychain                                 |
+| team_id               | 23KMWZ572J                                     |
+| team_name             | Art.sy Inc.                                    |
+| verbose               | false                                          |
+| force                 | false                                          |
+| skip_confirmation     | false                                          |
+| shallow_clone         | false                                          |
+| force_for_new_devices | false                                          |
+| skip_docs             | false                                          |
+| platform              | ios                                            |
++-----------------------+------------------------------------------------+
+
++-------------------+-----------------------------------------------+
+|                       Installed Certificate                       |
++-------------------+-----------------------------------------------+
+| User ID           | 23KMWZ572J                                    |
+| Common Name       | iPhone Distribution: Art.sy Inc. (23KMWZ572J) |
+| Organisation Unit | 23KMWZ572J                                    |
+| Organisation      | Art.sy Inc.                                   |
+| Country           | US                                            |
+| Start Datetime    | Apr  4 13:59:06 2017 GMT                      |
+| End Datetime      | Apr  4 13:59:06 2018 GMT                      |
++-------------------+-----------------------------------------------+
+
++---------------------+-----------------------------------------+-------------------------------------------------------------------------------------------------------------+
+|                                                                       Installed Provisioning Profile                                                                        |
++---------------------+-----------------------------------------+-------------------------------------------------------------------------------------------------------------+
+| Parameter           | Environment Variable                    | Value                                                                                                       |
++---------------------+-----------------------------------------+-------------------------------------------------------------------------------------------------------------+
+| App Identifier      |                                         | sy.art.folio                                                                                                |
+| Type                |                                         | appstore                                                                                                    |
+| Platform            |                                         | ios                                                                                                         |
+| Profile UUID        | sigh_sy.art.folio_appstore              | b045df0f-a691-4b7a-ac34-8349a3684030                                                                        |
+| Profile Name        | sigh_sy.art.folio_appstore_profile-name | match AppStore sy.art.folio                                                                                 |
+| Profile Path        | sigh_sy.art.folio_appstore_profile-path | /Users/orta/Library/MobileDevice/Provisioning Profiles/b045df0f-a691-4b7a-ac34-8349a3684030.mobileprovision |
+| Development Team ID | sigh_sy.art.folio_appstore_team-id      | 23KMWZ572J                                                                                                  |
++---------------------+-----------------------------------------+-------------------------------------------------------------------------------------------------------------+
+</code></pre>
+
+<p>Which at a glimpse gives a lot of the most useful information about how all the pieces come together. The new repo looks like this:</p>
+
+<pre><code class="sh">$ tree mobile_fastlane_match
+
+├── README.md
+├── certs
+│   ├── development
+│   │   ├── P4K6FACAUD.cer
+│   │   └── P4K6FACAUD.p12
+│   └── distribution
+│       ├── N5BMJ28RQ2.cer
+│       └── N5BMJ28RQ2.p12
+├── match_version.txt
+└── profiles
+    ├── appstore
+    │   └── AppStore_sy.art.folio.mobileprovision
+    └── development
+        └── Development_sy.art.folio.mobileprovision
+</code></pre>
+
+<a name="So..what.is.Match.doing.here."></a>
+<h2>So, what is Match doing here?</h2>
+
+<ol>
+<li><p>match creates a new key (the <code>*.p12</code>) - normally you would generate one of these through Keychain, and the entire team would
+to share this. We keep ours in team <a href="http://1password.com">1Password</a>. It needs to be used consistently when request certificates from Apple
+though the "Request a Certificate from a Certificate Authority" part of getting your certs set up.</p></li>
+<li><p>Using <a href="https://github.com/fastlane/fastlane/tree/master/cert">cert</a>: match will use this key <a href="https://github.com/fastlane/fastlane/blob/14dea61e4c81bf9be13bb86c09aa225c6e572618/cert/lib/cert/runner.rb#L141">to create a signing request</a> for you.</p></li>
+<li><p>Using <a href="https://github.com/fastlane/fastlane/tree/master/cert">cert</a>: match will generate a certificate for <a href="https://github.com/fastlane/fastlane/blob/14dea61e4c81bf9be13bb86c09aa225c6e572618/cert/lib/cert/runner.rb#L79">development or distribution</a> for you.</p></li>
+<li><p>Using <a href="https://github.com/fastlane/fastlane/tree/master/cert">cert</a>: match will <a href="https://github.com/fastlane/fastlane/blob/14dea61e4c81bf9be13bb86c09aa225c6e572618/match/lib/match/runner.rb#L133">generate a Provisioning Profile</a> using your certificate and data pulled from your Xcode Project.
+In my case, for development and distribution.</p>
+
+<p>These profiles are tied directly to one app and the certificate in step 3. For development, all devices in the dev center are also added.</p></li>
+<li><p>These files are then installed in their various methods.</p></li>
+<li><p>These files are then moved into your git repo, a commit is made for you, then pushed and the repo is removed from your computer.</p></li>
+</ol>
+
+
+<p>This process is nice, because this ^ is a lot of work. I only had to run a command.</p>
+
+<p>It would take at about 30 minutes to do this if I knew exactly what I wanted through the web interface + Keychain.</p>
+
+<p>We currently need to do this for every app. This works fine for the app where we are deploying multiple betas a month,
+but for one when we're deploying <em>maybe</em> a beta once a month or two (<em>eek! sorry...</em>) then it feels like every time you've come
+back to do some work, the world has shifted a bit.</p>
+
+<p>We do lose the fact that we know someone has specifically set everything up to work right at some point, but given how
+Xcode updates, <a href="http://stackoverflow.com/questions/4057241/iphone-what-is-a-wwdr-intermediate-certificate">WWDR updates</a> and certificate expirations tend to crop up - it can be frustrating to maintain.</p>
+
+<p>So would I move <a href="https://github.com/artsy/eigen">Eigen</a> to match? Maybe, next time something breaks. Till then I think new apps, and less-often updated
+apps should use match.</p>
+]]></content>
+  </entry>
+  
+</feed>

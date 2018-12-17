@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: tools | Artsy Engineering]]></title>
+  <link href="http://artsy.github.io/blog/categories/tools/atom.xml" rel="self"/>
+  <link href="http://artsy.github.io/"/>
+  <updated>2018-12-16T10:16:31+00:00</updated>
+  <id>http://artsy.github.io/</id>
+  <author>
+    <name><![CDATA[]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Releasecop Tracks Stale Releases]]></title>
+    <link href="http://artsy.github.io/blog/2015/09/01/releasecop-tracks-stale-releases/"/>
+    <updated>2015-09-01T17:30:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2015/09/01/releasecop-tracks-stale-releases</id>
+    <content type="html"><![CDATA[<p>Artsy practices a sort of <a href="http://en.wikipedia.org/wiki/Continuous_delivery">continuous delivery</a>. We keep release cycles short and the process of reviewing, testing, and deploying our software as reliable, fast, and automated as possible. (This blog has touched on these practices <a href="http://artsy.github.io/blog/categories/testing/">multiple</a> <a href="http://artsy.github.io/blog/categories/continuous-integration">times</a>.)</p>
+
+<p>Usually, commits that have been reviewed and merged are immediately built and tested. Successfully built versions of the codebase are often automatically deployed to a staging environment. On an automated or frequent-but-manual basis, that version is deployed to a production environment. Thus, commits form a pipeline:</p>
+
+<ul>
+<li>From developers' working branches</li>
+<li>To the master branch</li>
+<li>Through a hopefully-successful build</li>
+<li>To a staging environment</li>
+<li>To production</li>
+</ul>
+
+
+<p>The number of apps and services we deploy has grown to <em>dozens</em> per team, so sometimes things fall through the cracks. We've been using <a href="https://github.com/joeyAghion/releasecop">Releasecop</a> for the last few months to get gentle email reminders when an environment could use a deploy.</p>
+
+<!-- more -->
+
+
+<pre><code>gem install releasecop
+releasecop edit
+</code></pre>
+
+<p>This opens a <em>manifest</em> file where you can describe the sequence of git remotes and branches that make up your own release pipeline. For example:</p>
+
+<pre><code>{
+  "projects": {
+    "charge": [
+      { "name": "master", "git": "git@github.com:artsy/charge.git" },
+      { "name": "staging", "git": "git@heroku.com:charge-staging.git" },
+      { "name": "production", "git": "git@heroku.com:charge-production.git" }
+    ],
+    "gravity": [
+      { "name": "master", "git": "git@github.com:artsy/gravity.git" },
+      { "name": "master-succeeded", "git": "git@github.com:artsy/gravity.git", "branch": "master-succeeded" },
+      { "name": "staging", "git": "git@github.com:artsy/gravity.git", "branch": "staging" },
+      { "name": "production", "git": "git@github.com:artsy/gravity.git", "branch": "production" }
+    ]
+  }
+}
+</code></pre>
+
+<p>The <code>charge</code> app is a typical deployment to Heroku. Work progresses from the <code>master</code> branch to a <code>charge-staging</code> app to a <code>charge-production</code> app. The <code>gravity</code> app is a more complicated, non-Heroku deployment. It updates git branches to reflect what has been merged (<code>master</code>), tested (<code>master-succeeded</code>), deployed to staging, and deployed to production.</p>
+
+<p>Run the <code>releasecop check [app]</code> command to report the status of your apps' releases:</p>
+
+<pre><code>$ releasecop check --all
+charge...
+  staging is up-to-date with master
+  production is up-to-date with staging
+gravity...
+  master-succeeded is up-to-date with master
+  staging is up-to-date with master-succeeded
+  production is behind staging by:
+    06ca969 2015-09-04 [config] Replace Apple Push Notification certificates that expire today. (Eloy Durán)
+    171121f 2015-09-03 Admin-only API for cancelling a bid (Matthew Zikherman)
+    4c5feea 2015-09-02 install mongodb client in Docker so that import rake tasks can run (Barry Hoggard)
+    95347d1 2015-08-31 Update to delayed_job cookbook that works with Chef 11.10 (Joey Aghion)
+2 project(s) checked. 1 environment(s) out-of-date.
+</code></pre>
+
+<p>A nightly <a href="https://jenkins-ci.org/">Jenkins</a> job emails us the results, but a cron job could work equally well.</p>
+
+<p><a href="https://github.com/joeyAghion/releasecop">Releasecop</a> reminds us to deploy ready commits and close the loop on in-progress work. We hope you find it useful. (Pull requests are welcome!)</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[How Artsy Uses GitHub to Build Artsy]]></title>
+    <link href="http://artsy.github.io/blog/2012/01/29/how-art-dot-sy-uses-github-to-build-art-dot-sy/"/>
+    <updated>2012-01-29T14:26:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2012/01/29/how-art-dot-sy-uses-github-to-build-art-dot-sy</id>
+    <content type="html"><![CDATA[<p><a href="http://zachholman.com/">Zach Holman</a> gave a good talk on <a href="http://zachholman.com/talk/how-github-uses-github-to-build-github">How GitHub uses GitHub to build GitHub</a> at Rubyconf. It was great to hear how similar our own processes are at Artsy, with a few notable differences.</p>
+
+<p>Artsy engineers store almost everything on GitHub. We use GitHub Wikis, but don't use GitHub Issues much. We work in 3-week sprints with <a href="http://pivotaltracker.com/">Pivotal Tracker</a> instead. This blog is on GitHub. And, of course, we have our own Hubot which feeds funny animated GIFs after each successful deploy to our IRC channel.</p>
+
+<p>The most interesting part for me was around these two slides.</p>
+
+<p><img src="/images/2012-01-29-how-art-dot-sy-uses-github-to-build-art-dot-sy/github-pull.png" alt="Pull" /></p>
+
+<p><img src="/images/2012-01-29-how-art-dot-sy-uses-github-to-build-art-dot-sy/github-fork.png" alt="Fork" /></p>
+
+<p>Zach emphasized that you don't need forks to make pull requests. While technically true, I find forks particularly useful to keep things clean.</p>
+
+<p>At Artsy we use personal forks to work on features, create topical branches and make pull requests into the master from there. This is the workflow of the vast majority of open-source projects too. Now, Zach is right, you don't want to create any second class developers - our entire team has write access to the master. We use pull requests from forks to do peer code reviews, even for trivial things. I would typically make a pull request including the person I'd like to code review my changes in the title. Here's an example.</p>
+
+<p><img src="/images/2012-01-29-how-art-dot-sy-uses-github-to-build-art-dot-sy/github-pull-request.png" alt="Targeted Pull Request" /></p>
+
+<p>(Notice the use of hash rocket. Zach, Ruby has transcended our lives too.)</p>
+
+<p>Working on forks keeps developer branches away from "master". The main repository only has three branches: "master", "staging" and "production" and each developer can make up whatever branching strategy they like in individual forks.</p>
+
+<p>Code reviews have nothing to do with hierarchy or organization, any developer will code review any other developer's work. We tend to avoid using the same person for two subsequent code reviews to prevent excessive buddying. Zach called his pull requests "collective experiments" - a place for active discussions, rejections and praise. I really like that. Each of my rejected pull requests has been a great learning experience.</p>
+]]></content>
+  </entry>
+  
+</feed>

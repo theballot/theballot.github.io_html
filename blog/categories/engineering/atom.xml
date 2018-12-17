@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: engineering | Artsy Engineering]]></title>
+  <link href="http://artsy.github.io/blog/categories/engineering/atom.xml" rel="self"/>
+  <link href="http://artsy.github.io/"/>
+  <updated>2018-12-16T10:16:31+00:00</updated>
+  <id>http://artsy.github.io/</id>
+  <author>
+    <name><![CDATA[]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Engineering Highlights]]></title>
+    <link href="http://artsy.github.io/blog/2018/10/18/long-term-highlights/"/>
+    <updated>2018-10-18T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/10/18/long-term-highlights</id>
+    <content type="html"><![CDATA[<p>Engineering is an inherently long-term process. The Artsy engineering team has been around for 7 years, and that's
+quite a lot of time to get things done. We use software that keeps track of changes over time thanks to source
+control, but tools like git only help keep track of small passages of time. I want to keep track of events that
+could take months to ship.</p>
+
+<p>We've been doing a lot of long-term introspection as a team in 2018. Externally, this has been visible through
+things like opening our docs and creating our engineering principles. I'm expanding on this with an idea that I
+took from my work in building large open source projects: <a href="https://github.com/artsy/README/blob/master/culture/highlights.md#readme">Highlight docs</a>.</p>
+
+<!-- more -->
+
+
+<p>I've been the main contributor for <a href="https://danger.systems/">Danger</a> and <a href="https://github.com/danger/peril">Peril</a> for about three years, working mostly solo, and it can
+be hard to feel like you're actually getting things done. There's an infinite backlog of people's requests for
+improvements, and polite mentions of the flaws in your work. So, as a counter-balance it's nice to take stock of
+events you're proud of. I initially mocked this out as <a href="https://github.com/danger/peril/issues/235">an issue in the peril repo</a> but when I
+re-applied the idea to the whole of Artsy I used our existing open documentation repo <a href="https://github.com/artsy/README/"><code>artsy/README</code></a>
+instead.</p>
+
+<p>The core idea isn't complicated, however it's somewhat time-consuming and requires collaborators. I used the best
+method I know for getting a lot of people's attention: spamming slack threads asking folks what were some of their
+highlights. I used these to fuel the main arcs of the doc.</p>
+
+<p>A lot of the time, just starting something like this and putting some effort in up-front means others will start to
+participate. The trickiest part was finding the right definitive links for a particular event. Ideally we have open
+links (so people without private GitHub access (internally and externally) can enjoy them) but sometimes the right
+link is private and that's ok. It's not open source by diktat.</p>
+
+<p>Trying to find the right balance between an "Artsy" event vs an "Engineering" event can sometimes be a bit vague,
+but I like to believe that more is more. It's about pointing out important events, so more is always a net
+positive. With that in mind, here's a few of ours, the rest is a click away:</p>
+
+<p><a href="https://github.com/artsy/README/blob/master/culture/highlights.md#readme"><img src="/images/highlights/highlights.png"></a></p>
+
+<p>I think I'm going to make one of these with every new large scale project I work on, I kinda wish we had one for
+the Artsy iOS app now. Maybe I'm going to need to do that now. Ergh, this is what I get for writing blog posts.</p>
+
+<p>I'd love to see some other companies or OSS projects using this idea - let me know in the comments if you are!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Defining Our Engineering Guiding Principles]]></title>
+    <link href="http://artsy.github.io/blog/2018/08/22/engineering-guiding-principles/"/>
+    <updated>2018-08-22T00:00:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2018/08/22/engineering-guiding-principles</id>
+    <content type="html"><![CDATA[<p>The Artsy Engineering team recently underwent the process of defining our guiding principles; you can read through the pull request <a href="https://github.com/artsy/meta/pull/41">here</a> and the finished principles <a href="https://github.com/artsy/README/blob/master/culture/engineering-principles.md">here</a>. In this blog post, I'd like to use our experience of defining these to answer the following questions:</p>
+
+<ul>
+<li>Why define engineering guiding principles?</li>
+<li>What makes principles different from company values?</li>
+<li>How to define guiding principles?</li>
+</ul>
+
+
+<p>Let's dive in.</p>
+
+<!-- more -->
+
+
+<a name="Why.Define.Engineering.Principles."></a>
+<h2>Why Define Engineering Principles?</h2>
+
+<p>Artsy's CEO has a <a href="https://www.artsy.net/article/carter-cleveland-why-define-company-values">blog post</a> that discusses why you should define company values and, unsurprisingly, a lot of the same rationale applies to an engineering team's guiding principles. In summary:</p>
+
+<ul>
+<li>Undefined principles lead to cultural debt (similar to technical debt, but in terms of a team's culture).</li>
+<li>Defined values lead to greater empowerment (engineers feel safe making decisions on their own, based on the principles).</li>
+<li>Defined values reduce the risk of unconscious bias (we help our decisions get made consistently).</li>
+<li>Values are your brand (this is true for Artsy Engineering, but our <a href="https://github.com/artsy">contributions</a> to the software industry are also a significant part of brand).</li>
+</ul>
+
+
+<p>I think each of these reasons applies to defining guiding principles as well. Over the past four years, I've seen the Artsy Engineering team encounter situations related to the reasons outlined above and, while the company values have helped us navigate disagreement, they haven't been entirely satisfactory.</p>
+
+<p>The two biggest shortcomings of the values have been an <strong>inconsistent practice</strong> and a <strong>difficulty making team-based decisions</strong>.</p>
+
+<p>Artsy Engineering supports the business primarily through product teams, which each have their own responsibilities and KPIs. Over time, different teams have developed their own subculture. In earnest, I think this is really cool, but it <em>has</em> eventually led to two teams taking radically different approaches to similar problems, or even repeating work that another team is already working on.</p>
+
+<p>That missing consistency also led to difficulties making team-based decisions: how can teams make decisions <em>as a team</em> without having a clear set of guidelines with which to evaluate a decision? As I'll explain in the next section, the Artsy company values often left us without a clear answer.</p>
+
+<a name="What.Makes.Guiding.Principles.Different.from.Company.Values."></a>
+<h2>What Makes Guiding Principles Different from Company Values?</h2>
+
+<p>Artsy's <a href="https://github.com/artsy/README/blob/master/culture/what-is-artsy.md#artsy-values">five core values</a> are as follows:</p>
+
+<ul>
+<li>Art meets Science</li>
+<li>People are Paramount</li>
+<li>Quality Worthy of Art</li>
+<li>Positive Energy</li>
+<li>Openness</li>
+</ul>
+
+
+<p>Those have been an incredibly useful framework for guiding Artsy's growth, for three years now. They're good values. But they are <em>very</em> general, designed specifically to be inclusive of every member of, and every team in, our company.</p>
+
+<p>That can lead to challenges when applying the values to specific teams, including engineering. In our day-to-day work, the values can help guide our general actions (being positive in pull request reviews, for example), but lack the specifics necessary to drive decision-making on a team level. The values also sometimes conflict with one another, and navigating those conflicts is difficult without a set of down-to-Earth guiding principles.</p>
+
+<p>Let's take a look at an example. "Quality Worthy of Art" is a really great value – personally, it motivates me to build software that would be worthy of hanging in a studio or gallery. However, the process of <em>getting</em> to that quality is often very messy; we might try one approach, switch to another, ship with <code>TODO</code> comments left in, etc. Real artists ship, after all. When <a href="http://artsy.github.io/series/open-source-by-default/">developing software in the open</a>, which value wins? The openness value, or the quality value?</p>
+
+<p>Our CEO has encouraged the company to lean into these tensions and use them to grow and learn together, which was a motivating factor in defining our guiding principles.</p>
+
+<a name="How.to.Define.Guiding.Principles."></a>
+<h2>How to Define Guiding Principles?</h2>
+
+<p>This is a very tricky question, since so much of the answer for Artsy Engineering is specific to us at Artsy (your process will necessarily be different) and specific to our team <em>within</em> Artsy (engineers make up less than 15% of Artsy's employee headcount). Orta helped define the values by looking at <a href="https://www.objc.io/issues/22-scale/artsy/">artefact's of our mobile team's culture</a> (since our mobile team <em>did</em> have a strong culture) and by talking to engineers privately to ask them for input. That was only half the work, though.</p>
+
+<p>Orta opened <a href="https://github.com/artsy/meta/pull/41">the pull request</a> with the guiding principles that he had synthesized from past documentation and from conversations with engineers, but explicitly marked the PR as a work-in-progress. The values he had were a good starting point, but we iterated extensively on them. We also added many more that had been missed by Orta's starting work (we had to start somewhere, after all). The whole process took about two weeks, and I learned a lot about how other engineers work at Artsy.</p>
+
+<p>Most of my experience at Artsy has been engineering front-end systems, and through the process of defining these principles, I learned a lot about how our back-end engineers work. We don't always work in the same way (remember, tensions?) but I value those differences; we have so much to learn from each other! Now with the guidelines, I'll be able to appreciate the back-end perspective.</p>
+
+<hr />
+
+<p>So with all that said, what are the Artsy Engineering Guiding Principles? You can read the <a href="https://github.com/artsy/README/blob/master/culture/engineering-principles.md">current principles here</a> (they are a living set of guidelines), but the principles we decided on are:</p>
+
+<ul>
+<li>Open Source by Default</li>
+<li>Own Your Dependencies</li>
+<li>Incremental Revolution</li>
+<li>Being Nice is Nice</li>
+<li>Minimum Viable Process</li>
+<li>Leverage Your Impact</li>
+<li>De-silo Engineers</li>
+<li>Build for 10x</li>
+<li>Done Means Done</li>
+</ul>
+
+
+<p>I encourage you to read the document for explanations of what each of these mean.</p>
+
+<p>Day-to-day, I don't expect <em>that</em> much to change now that we have these defined. But the differences they make will be key to the longevity and growth of our engineering team's culture.</p>
+
+<p>Remember that earlier example of openness-vs-quality? That is answered explicitly by the principles. The principles are <em>actionable</em>, they are <em>specific</em>, and they are <em>ours</em>.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Professional Development at Artsy Engineering]]></title>
+    <link href="http://artsy.github.io/blog/2016/09/22/professional-development-at-artsy-engineering/"/>
+    <updated>2016-09-22T16:37:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2016/09/22/professional-development-at-artsy-engineering</id>
+    <content type="html"><![CDATA[<p>In considering an offer to join us at Artsy, one of our newest incoming engineers asked me a great question: <em>How does the tech team do professional development?</em></p>
+
+<p>As I thought about it, I began to realize that the answer is “a lot”! Most of our efforts evolved organically. Someone had an idea, and people rallied around it. I thought it would be useful to share, in case others are inspired by what's caught on here. Here are some of the things we do.</p>
+
+<!-- more -->
+
+
+<a name="Practices"></a>
+<h1>Practices</h1>
+
+<p>Our engineering team used to be organized along <em>practice</em> lines: web, mobile native, and platform. Following our recent <a href="http://artsy.github.io/blog/2016/03/28/artsy-engineering-organization-stack/">product reorganization</a>, we’re primarily organized in product teams, which are more deeply integrated and aligned with our business units. But practices are here to stay. They serve as horizontal channels for developers working in similar technologies to collaborate and share best practices. They each have a lively Slack channel and do standups once or twice a week.</p>
+
+<a name="Product.teams"></a>
+<h1>Product teams</h1>
+
+<p>Within product teams, engineers take on work across the stack. Most engineers have one or more zone of expertise, but it's important for us to branch out as well. In my role as a product engineering lead, I'm responsible for helping to support this, to ensure that my team members are broadening in their skills.</p>
+
+<a name="Collaboration"></a>
+<h1>Collaboration</h1>
+
+<p>In day-to-day work, we do a lot of pair programming and whiteboard architecture on an ad hoc basis. This happens between teams as much as within them. It's common for developers to request code reviews from members of other teams, and equally common for them to provide friendly pointers on PRs they chance upon.</p>
+
+<a name="Lunch....n....Learn"></a>
+<h1>Lunch ’n’ Learn</h1>
+
+<p>Every Thursday, we do a Lunch-and-Learn session. Historically, we mostly showed off tech we use internally. But over about a year, most of our tech stack has been presented this way, so we also bring in engineers we know at other companies to share what they’re working on.</p>
+
+<a name="Conferences"></a>
+<h1>Conferences</h1>
+
+<p>Devs are encouraged to attend conferences. The engineering budget covers expenses for 1 per year as an attendee, and unlimited as a presenter. Many of our engineers are experienced presenters -- and I know <a href="http://orta.io/">Orta</a> has even been a conference organizer. So there’s plenty of support for first-time presenters. Lunch ’n’ Learn sessions have served as a place to do a dry run for a presentation.</p>
+
+<a name="Community.engagement"></a>
+<h1>Community engagement</h1>
+
+<p>Professional development isn’t just about absorbing new information, it’s also about teaching and sharing. That’s one of the best ways to truly master a topic. We encourage folks to participate in OSS, blogging (obviously), speaking, and other types of community engagement, and we’ve got really experienced people on all those fronts to support for helping make this happen. We've got team members who help maintain highly utilized community projects, but there are more low-key ways to be involved in OSS. One nice thing about being <a href="http://code.dblock.org/2015/02/09/becoming-open-source-by-default.html">open source by default</a> is that it gives us ways to contribute to OSS in the course of doing regular product development.</p>
+
+<a name="Slack.discussions"></a>
+<h1>Slack discussions</h1>
+
+<p>We’ve got an active #tech-learning Slack channel, which people use to share and discuss articles. We also have a number of language-specific Slack channels, such as #elixir, #swift, and #scala (my personal fave).</p>
+
+<a name="Mentorship"></a>
+<h1>Mentorship</h1>
+
+<p>Newer devs are paired with a mentor, who serves as the point person the newer dev can always talk to. Making this connection official means that it counts as a job responsibility for the mentor. For obvious reasons, mentoring benefits the mentee, but it's good to remember that it also helps mentors develop. After all, teaching someone is the best way to learn.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[The Tech Behind Live Auction Integration]]></title>
+    <link href="http://artsy.github.io/blog/2016/08/09/the-tech-behind-live-auction-integration/"/>
+    <updated>2016-08-09T11:30:00+00:00</updated>
+    <id>http://artsy.github.io/blog/2016/08/09/the-tech-behind-live-auction-integration</id>
+    <content type="html"><![CDATA[<p>In late June, the <a href="https://www.artsy.net/auctions/">Artsy auctions</a> team launched our Live Auction Integration (LAI) product. It allows people to participate online in live sales held at auction houses <a href="https://www.artsy.net/auction-partnerships">that partner with Artsy</a>. It was a big project, begun in December, involving both brand new software and extensive integration work with the rest of our systems. This is the first in what will be a series of blog posts discussing the engineering work we did to get a complex product from inception to launch in such a brief time window, with a go-live deadline set in stone weeks in advance. In this, I’ll dig into what we shipped on a high level, as well as some of the overarching technical decisions.</p>
+
+<!-- more -->
+
+
+<p>LAI raised challenges that were novel to our engineering team. The product is a real-time experience from the perspectives of the bidder and the auction house. Producing that experience requires a complex human + computer system. There are two main flows of information: from auction house to bidder, and vice versa. These are mediated by our systems and staff as follows:</p>
+
+<ul>
+<li>As bids occur in the auction house sale room, an Artsy operator working on-site inputs that activity into a web interface so that online participants can keep track of what’s happening.</li>
+<li>As online participants place bids, our system records those as “prospective bids”, and an Artsy bidding clerk on site at the auction house bids on their behalf in the auction house. As those bids are recognized, they are reflected back to all participants, through the prior flow.</li>
+</ul>
+
+
+<p>To make this easier to visualize:</p>
+
+<p><img src="/images/2016-08-09-the-tech-behind-live-auction-integration/Artsy%20Live%20Auction%20Integration%20flow.png" alt="Artsy Live Auction Integration Flow" /></p>
+
+<p>This needs to happen in a tight loop to allow online bidders to be competitive with those in the room and via auction house phone clerks. The architecture and UX of the LAI product were optimized for that goal. In addition, we built the system to integrate with live events hosted by our partners. As the events are outside our direct control, there are many, many ways things can deviate from this idealized flow. We had to carefully account for these situations.</p>
+
+<p>Where possible, we leveraged our existing auctions technology. But we took the opportunity to upgrade that technology in some places and chose new approaches in others. Meanwhile, we were running the busiest Artsy auction season to date, and we had to ensure that we weren’t disrupting our existing stack. Below, I discuss the pieces of the end-to-end product.</p>
+
+<a name="The.Live.user.experience"></a>
+<h1>The Live user experience</h1>
+
+<p>When the live auction actually begins, participants and Artsy staff interact with the system with front-end software developed from scratch. Web users (desktop and mobile) and staff use a new, dedicated Artsy Live web application, which is implemented in a project we call Prediction. iOS Artsy App users can also participate with newly developed UX within that app.</p>
+
+<a name="The.web.app:.Prediction"></a>
+<h2>The web app: Prediction</h2>
+
+<p>Our bidder and operator web interfaces are implemented in an application we call Prediction, a <a href="https://medium.com/@mjackson/universal-javascript-4761051b7ae9#.ev1yd3juy">universal</a> <a href="https://facebook.github.io/react/">React</a>+<a href="http://redux.js.org/">Redux</a> JavaScript app, served from an <a href="http://expressjs.com/">Express</a> server. Using React allowed us to completely share our view layer code for pre-rendering in the server and making updates in the client.</p>
+
+<p><img src="/images/2016-08-09-the-tech-behind-live-auction-integration/Prediction%20Bidder%20Screenshot.png" alt="Prediction Bidder UI" /></p>
+
+<p>Keeping our state management and transition code organized with Redux allowed us to achieve a massive amount of reuse of model and controller code between our web interfaces. To solve Redux's <a href="http://stackoverflow.com/q/34570758/807674">async</a> and <a href="http://stackoverflow.com/q/34299460/807674">data conveyance</a> “problems", we built an integration layer for React and Redux called <a href="https://github.com/artsy/react-redux-controller">React Redux Controller</a>.</p>
+
+<p><img src="/images/2016-08-09-the-tech-behind-live-auction-integration/Prediction%20Operator%20Screenshot.png" alt="Prediction Operator UI" /></p>
+
+<p>We found the React+Redux approach to model-view-controller app development to be a major win in what it gave us for maintainability, code reuse, easy testability, and the ability to reason about our code.</p>
+
+<a name="The.iOS.native.app:.Eigen"></a>
+<h2>The iOS native app: Eigen</h2>
+
+<p>For users of the Artsy iOS app, known to our engineering team as <a href="https://github.com/artsy/eigen">Eigen</a>, a touch-optimized LAI experience was coded in Swift. It shares the same app with existing Objective-C code as well as <a href="https://facebook.github.io/react-native/">React Native</a> code used for other aspects of the iOS experience. We considered using React Native for this, but we decided to go with more familiar technology to contain the risk.</p>
+
+<p><img src="/images/2016-08-09-the-tech-behind-live-auction-integration/Eigen%20Bidder%20Screenshot.png" alt="Eigen Bidder UI" /></p>
+
+<p>Both of these applications interact with our central Artsy back-end service to pull in artist, artwork, and sale metadata when the user enters the auction. These queries are mediated by a <a href="http://graphql.org/">GraphQL</a> middleware service we call <a href="https://github.com/artsy/metaphysics">Metaphysics</a> (also discussed <a href="/blog/2016/06/19/graphql-for-mobile/">here</a>), which vastly simplified the fetching process in the front-end services. But from that point forward, the apps interact with a brand new auction state management system over a bidirectional <a href="https://en.wikipedia.org/wiki/WebSocket">WebSocket</a> API for live updating.</p>
+
+<a name="The.auction.state.management.service:.Causality"></a>
+<h1>The auction state management service: Causality</h1>
+
+<p>The other recently launched piece of software delivered for LAI was a new auction state management system we call Causality. It processes bids and other auction events, computes the derived state of a sale, and hosts the bidirectional WebSocket API.</p>
+
+<p>Causality was developed in Scala, using the <a href="http://doc.akka.io/docs/akka/current/intro/what-is-akka.html">Akka</a> technology suite for distributed computing. At its core is an append-only storage engine, based on <a href="http://doc.akka.io/docs/akka/current/scala/persistence.html">Akka Persistence</a>, with a small library we developed called <a href="https://github.com/artsy/atomic-store">Atomic Store</a> that allowed us to achieve strict consistency, at the cost of maximal throughput -- a trade-off that is explored in the readme of that project.</p>
+
+<p>Lastly, Causality has an <a href="http://doc.akka.io/docs/akka/current/scala/http/introduction.html">Akka HTTP</a>-based API layer, with a WebSocket server implemented using <a href="http://doc.akka.io/docs/akka/current/scala/stream/stream-introduction.html">Akka Streams</a>. Asynchronous updates generated in the event processing logic are published across the cluster using <a href="http://doc.akka.io/docs/akka/current/scala/distributed-pub-sub.html">Akka Distributed Pub/Sub</a>, and they are merged into the WebSocket outflow.</p>
+
+<a name="Pre-bidding..tooling..and.other.concerns"></a>
+<h1>Pre-bidding, tooling, and other concerns</h1>
+
+<p>In addition to accepting bids placed during a live sale, we also allow users to place bids before the event begins. In practice, this is almost the same workflow as our existing timed auction experience. For this reason, we chose to leverage all of our existing technology. The work of preparing our preexisting tech for LAI involved widespread modifications to our front-end UI, messaging services, admin tooling, and monitoring to make them appropriate for a live sale, as well as a reliable handoff of responsibility from these preexisting front- and back-end services to the new ones at the time the sale goes live.</p>
+
+<p>We relied on our automated test suites, as well as thorough manual testing by the entire Artsy auctions team, to ensure that this handoff functioned smoothly under various circumstances. We will eventually eliminate this duplication. But this will require delicate refactoring of our preexisting tooling, which we will take on, even as we execute a fall auction season significantly busier than the last.</p>
+
+<a name="Reflection"></a>
+<h1>Reflection</h1>
+
+<p>In the process of architecting our LAI product, we had to make some tough decisions in the face of new challenges. Chief among these were the decisions on where on the spectrum of bleeding-edge technology versus tried-and-true choices to land, for many of our subcomponents. Bleeding-edge tech often offers more elegant and performant solutions, but at the cost of learning curve and risk of immaturity. We also had to carefully prioritize functionality. Choosing wisely throughout the process was critical to shipping on time. The rationale behind these decisions and their outcomes will be the result of future pieces.</p>
+
+<p>To close, I want to express huge thanks to the auctions product &amp; engineering team for putting in long hours to design, implement, and troubleshoot the software; the auctions arts team for providing the domain knowledge and operational feedback; and our broader Artsy engineering team, at least half of whom directly contributed code to this effort.</p>
+]]></content>
+  </entry>
+  
+</feed>
